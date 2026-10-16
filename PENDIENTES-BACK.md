@@ -67,29 +67,6 @@ reserva. Con `capacity > 1` (por ejemplo una clase con varios cupos, migración 
 cliente puede ocupar varios cupos de la misma franja**. Además, la migración V6 eliminó la
 restricción de exclusión `ex_reservations_no_overlap` (V4), así que la base de datos tampoco lo
 impide.
-
-**Nota:** esto lo deducimos leyendo el código. Conviene que lo confirmen con esta consulta, que
-debe devolver filas si hay duplicados:
-
-```sql
-SELECT client_id, service_id, reservation_date, start_time, count(*) AS reservas
-FROM reservations
-WHERE status IN ('PENDING', 'CONFIRMED')
-GROUP BY client_id, service_id, reservation_date, start_time
-HAVING count(*) > 1;
-```
-
-**Proponemos:**
-1. En `validateSlot` (o en `create` y `modify`), rechazar si el mismo `client_id` ya tiene una
-   reserva activa (PENDING o CONFIRMED) del mismo servicio que se solape con la franja. Devolver
-   un código nuevo, por ejemplo `DUPLICATE_RESERVATION` (409), con un mensaje claro.
-2. Hacerlo bajo el mismo bloqueo de fila del servicio (`findByIdForUpdate`) para que dos
-   peticiones simultáneas no se cuelen.
-3. Opcional, como respaldo en base de datos: un índice único parcial sobre
-   `(client_id, service_id, reservation_date, start_time)` para estados activos.
-4. Documentar el nuevo código de error en el Swagger. El front ya muestra el `message` que el
-   back mande, así que no necesita cambios para mostrarlo.
-
 ---
 
 ## 3. Diferencias entre el Swagger y el código
@@ -114,17 +91,15 @@ El front de estas HU está hecho y probado; para cerrarlas al 100 % falta lo sig
 
 | HU | Qué hace el front hoy | Qué falta en el back |
 |----|-----------------------|----------------------|
-| HU-013 | `PUT /services/{id}` con `start_date` / `end_date` | **[completar]** |
 | HU-014 | `PUT /services/{id}/schedules` (guarda bien) | No hay forma de **leer** los horarios guardados: `ScheduleController` solo tiene POST y PUT en `/services/{id}/schedules`, y `ServiceView` no incluye los horarios. Al volver a "Mi agenda" el proveedor no ve sus días de atención. Pedimos `GET /services/{id}/schedules` (devolviendo `[{ id, dayOfWeek, startTime, endTime }]`, con `@GetMapping` y la misma regla de dueño del servicio) o incluir `schedules` en `ServiceView`. Mientras tanto el front guarda una copia en el navegador; en cuanto exista el GET, lo usa solo. |
-| HU-018 / HU-019 | El calendario mensual pide `GET /services/{id}/availability?date=` día por día (hasta 31 llamadas por mes) | Un endpoint mensual (por ejemplo `availability?month=YYYY-MM`) que devuelva el estado de cada día en una sola llamada. Hoy funciona, pero es lento y recarga el back. **[confirmar con el equipo]** |
-| HU-029 | **[completar]** | **[completar]** |
-
-> Las filas con **[completar]** no las pudimos documentar con certeza desde el front. Que cada
-> responsable de HU escriba qué falta, para no dejar el pendiente ambiguo.
+| HU-018 / HU-019 | El calendario mensual pide `GET /services/{id}/availability?date=` día por día (hasta 31 llamadas por mes) | Un endpoint mensual (por ejemplo `availability?month=YYYY-MM`) que devuelva el estado de cada día en una sola llamada. Hoy funciona, pero es lento y recarga el back. **Solo es una sugerencia**|
+| HU-029 | Muestra la ventana de confirmación de la reserva | Que el back envie el correo post confirmación, no el codigo, sino el correo indicando que se reservó bien y cual fue el código de reserva que se le asignó |
 
 ---
 
-## 5. Falta el correo de confirmación de la reserva (HU-028 / HU-029)
+## 5. Falta el correo de confirmación de la reserva (HU-029)
+
+Como se indica en la tabla anterior 
 
 **Qué pasa:** cuando el cliente confirma su reserva con el código (`POST /reservations/{id}/confirm`)
 y queda en `CONFIRMED`, no le llega ningún correo diciendo que la reserva quedó confirmada.
