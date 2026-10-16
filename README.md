@@ -92,7 +92,7 @@ documento). La usamos para traer sus datos, ver sus reservas activas y cancelar.
 
 ## Pendientes con el back
 
-Más detalle en `README-FRONT.md`.
+Más detalle en `PENDIENTES-BACK.md`.
 
 1. El back solo da disponibilidad por día, no por mes. Para pintar el calendario hacemos una
    consulta por cada día del mes (con caché). "Parcialmente ocupado" lo sacamos comparando con
