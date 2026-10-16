@@ -1,0 +1,33 @@
+# Pipeline del front: instala, corre las pruebas de contrato y compila.
+# Si una prueba falla, no se compila ni se despliega.
+trigger:
+  branches:
+    include: [main]
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: NodeTool@0
+    displayName: Instalar Node 20
+    inputs:
+      versionSpec: "20.x"
+
+  - script: npm ci
+    displayName: Instalar dependencias
+
+  - script: npm test -- --reporter=default --reporter=junit --outputFile=test-results.xml
+    displayName: Pruebas de contrato (front vs Swagger del back)
+
+  - task: PublishTestResults@2
+    displayName: Publicar resultados de pruebas
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: test-results.xml
+
+  - script: npm run build
+    displayName: Compilar
+    env:
+      VITE_USE_MOCKS: "false"
+      VITE_API_BASE_URL: $(API_BASE_URL)

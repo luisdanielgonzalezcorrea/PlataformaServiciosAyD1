@@ -1,0 +1,1691 @@
+openapi: 3.2.0
+info:
+  title: API Reserva de Servicios
+  description: |
+    Especificación alineada al plan de trabajo oficial y las Historias de Usuario (HU-001 a HU-040).
+
+    ## Contrato de errores
+
+    Toda respuesta de error usa la misma forma, sin importar si proviene de una regla de
+    negocio o del framework:
+
+    ```json
+    { "code": "SLOT_NOT_AVAILABLE", "message": "La franja ya no está disponible." }
+    ```
+
+    Los errores de validación agregan `fields` con el detalle por campo; el resto de errores
+    lo omite, de modo que el cliente puede deserializar siempre el mismo tipo:
+
+    ```json
+    {
+      "code": "VALIDATION_ERROR",
+      "message": "La solicitud contiene datos inválidos.",
+      "fields": [{ "field": "email", "message": "no puede estar vacío" }]
+    }
+    ```
+
+    `code` es estable y es lo que la aplicación debe usar para decidir; `message` es texto
+    legible para la persona usuaria y puede cambiar sin romper clientes.
+
+    ## Códigos HTTP
+
+    | Código | Significado |
+    |--------|-------------|
+    | 400 | La solicitud es válida en forma pero la operación no se puede intentar. |
+    | 401 | Falta autenticación, o el token no es válido. Incluye `WWW-Authenticate`. |
+    | 403 | Identidad conocida pero sin permiso, o correo sin verificar. |
+    | 404 | El recurso no existe, **o no debe revelarse**. Un recurso de otro proveedor responde 404, no 403, para no filtrar su existencia. |
+    | 409 | Conflicto con el estado actual del recurso. |
+    | 413 | El archivo supera el tamaño máximo. |
+    | 415 | Tipo de contenido no soportado. |
+    | 429 | Se superó un límite de tasa. Incluye `Retry-After`. |
+    | 500 | Error inesperado. El detalle nunca se expone al cliente. |
+    | 503 | Dependencia externa caída. Hoy solo `MAIL_UNAVAILABLE` en el registro. |
+
+    ## Límites de tasa
+
+    Los endpoints de autenticación están limitados por IP y por endpoint. Al superarse
+    responden 429 con `Retry-After` en segundos.
+
+    | Endpoint | Límite por minuto |
+    |----------|------------------|
+    | `POST /auth/login` | 10 |
+    | `POST /auth/register` | 5 |
+    | `POST /auth/verify-email` | 5 |
+    | `POST /auth/verify-email/resend` | 5 |
+    | `POST /auth/forgot-password` | 5 |
+    | `POST /auth/password/reset` | 5 |
+    | `POST /client/auth/otp` | 5 |
+    | `POST /client/auth/session` | 5 |
+
+    ## Recuperación de contraseña
+
+    `forgot-password` y `verify-email/resend` responden siempre 200 con el mismo mensaje,
+    exista o no la cuenta, para no permitir enumerar qué correos están registrados.
+    Por esa misma razón **nunca** responden 503 aunque el correo falle: el fallo queda
+    registrado en el log del servidor y el usuario ve la misma respuesta neutra.
+
+    `forgot-password` envía un enlace de un solo uso con vigencia de 30 minutos. La base
+    del enlace es configurable (`MAIL_RESET_BASE_URL`) y el token viaja como parámetro
+    `token`, codificado para URL.
+
+    ## Entrega de correo
+
+    | Variable | Por defecto | Uso |
+    |----------|-------------|-----|
+    | `MAIL_HOST` / `MAIL_PORT` | `localhost` / `1025` | Servidor SMTP. En desarrollo apunta a Mailpit. |
+    | `MAIL_USERNAME` / `MAIL_PASSWORD` | vacío | Credenciales SMTP. |
+    | `MAIL_FROM` | `no-reply@servas.local` | Remitente. |
+    | `MAIL_SMTP_AUTH` | `false` | Activa autenticación SMTP. |
+    | `MAIL_SMTP_STARTTLS` | `false` | Activa STARTTLS. |
+    | `MAIL_TRANSPORT` | `smtp` | Transporte de Spring Mail. |
+    | `MAIL_RESET_BASE_URL` | `http://localhost:5173/reset-password` | Base del enlace de recuperación. |
+  version: 1.0.0
+paths:
+
+  # ==========================================
+  # ÉPICA 1: ACCESO Y GESTIÓN DE USUARIOS
+  # ==========================================
+  /auth/register:
+    post:
+      tags: [Autenticación & Proveedores]
+      summary: Registro de proveedor (HU-001)
+      description: Crea la cuenta de usuario y el perfil del proveedor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, document_type, document_number, first_name, last_name, phone]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8, maxLength: 72 }
+                document_type: { type: string, enum: [CC, TI, CE, PASSPORT, OTRO] }
+                document_number: { type: string }
+                first_name: { type: string }
+                last_name: { type: string }
+                phone: { type: string }
+                birth_date: { type: string, format: date, description: "Debe ser una fecha pasada." }
+      responses:
+        '201':
+          description: |
+            Proveedor registrado exitosamente. El código OTP se envía por email y caduca a los
+            10 minutos.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/EmailTaken' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503':
+          description: |
+            La cuenta quedó creada pero el email no pudo entregarse (`MAIL_UNAVAILABLE`). La cuenta
+            se conserva a propósito para que el cliente pueda recuperar el acceso con
+            `POST /auth/verify-email/resend`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example:
+                code: MAIL_UNAVAILABLE
+                message: "No pudimos enviar el correo de verificación. Reintenta con el reenvío."
+
+  /auth/verify-email:
+    post:
+      tags: [Autenticación & Proveedores]
+      summary: Verificación de correo vía OTP en Caché (HU-002)
+      description: |
+        Valida el código temporal almacenado en Redis/RAM. El código llega por email al registrarse
+        en `POST /auth/register` o al pedir un reenvío con `POST /auth/verify-email/resend`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, otp_code]
+              properties:
+                email: { type: string, format: email }
+                otp_code: { type: string, example: "583920" }
+      responses:
+        '200': { description: Cuenta verificada exitosamente. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429':
+          description: |
+            Se superó el máximo de intentos del código (`INVALID_OTP`), o el límite de tasa del
+            endpoint (`RATE_LIMITED`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              examples:
+                otpIntentos:
+                  value: { code: OTP_ATTEMPTS_EXCEEDED, message: "Superó el máximo de intentos permitidos. Solicite un nuevo código." }
+                rateLimit:
+                  value: { code: RATE_LIMITED, message: "Demasiadas solicitudes. Intente nuevamente en unos instantes." }
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+
+  /auth/login:
+    post:
+      tags: [Autenticación & Proveedores]
+      summary: Iniciar sesión del proveedor (HU-004)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200': { description: Token de sesión generado (UUID opaco en Redis, TTL 8h). }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/InvalidCredentials' }
+        '403': { $ref: '#/components/responses/EmailNotVerified' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/logout:
+    post:
+      tags: [Autenticación & Proveedores]
+      summary: Cerrar sesión activa del proveedor (HU-005)
+      description: Invalida el token de sesión vigente.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Sesión cerrada y token invalidado. }
+        '401': { $ref: '#/components/responses/TokenInvalid' }
+
+  /auth/verify-email/resend:
+    post:
+      tags: [Autenticación & Proveedores]
+      summary: Solicitar nuevo código de verificación (HU-002)
+      description: |
+        Genera y envía un nuevo OTP. El código anterior deja de ser válido.
+
+        Responde siempre 200 con el mismo mensaje exista o no la cuenta: un 404 en este
+        endpoint público permitiría enumerar qué correos están registrados.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Confirmación neutra, idéntica exista o no la cuenta.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example: { message: "Si la cuenta existe, enviaremos las instrucciones por correo." }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/forgot-password:
+    post:
+      tags: [Autenticación & Proveedores]
+      summary: Recuperación de contraseña (HU-006)
+      description: |
+        Genera un token de un solo uso, con vigencia de 30 minutos, y lo entrega por correo.
+
+        Responde siempre 200 con el mismo mensaje exista o no la cuenta, por el mismo motivo
+        que `verify-email/resend`.
+
+        El enlace que se envía se construye sobre `MAIL_RESET_BASE_URL`; ver «Entrega de correo».
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Confirmación neutra, idéntica exista o no la cuenta.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example: { message: "Si la cuenta existe, enviaremos las instrucciones por correo." }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/password/reset:
+    post:
+      tags: [Autenticación & Proveedores]
+      summary: Aplicar una nueva contraseña con el token de recuperación (HU-006)
+      description: |
+        Consume el token recibido por correo y cambia la contraseña.
+
+        El token se destruye en el primer intento, exista o no tenga éxito, de modo que un
+        enlace robado no sirve para un segundo cambio. Un token inválido, vencido o ya usado
+        responde 400 con `RESET_TOKEN_INVALID`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, new_password]
+              properties:
+                token: { type: string }
+                new_password: { type: string, minLength: 8, maxLength: 72 }
+      responses:
+        '200':
+          description: Contraseña actualizada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  email: { type: string, format: email }
+        '400':
+          description: |
+            `RESET_TOKEN_INVALID` si el token no existe, expiró o ya se usó, o
+            `VALIDATION_ERROR` si el cuerpo no cumple el esquema.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              examples:
+                tokenInvalido:
+                  value: { code: RESET_TOKEN_INVALID, message: "El enlace de restablecimiento es inválido o ha expirado." }
+                validacion:
+                  value:
+                    code: VALIDATION_ERROR
+                    message: "La solicitud contiene datos inválidos."
+                    fields: [{ field: new_password, message: "la longitud debe estar entre 8 y 72" }]
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  # ==========================================
+  # ÉPICA 1 (cont.): SESIÓN Y PERFIL DEL CLIENTE
+  # ==========================================
+  /client/auth/otp:
+    post:
+      tags: [Cliente]
+      summary: Solicitar código de sesión de cliente (EP1.1)
+      description: |
+        Envía un OTP de 6 dígitos al correo registrado del cliente. La respuesta es idéntica
+        exista o no el cliente, para no convertirse en un oráculo de qué documentos tienen cuenta.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [document_type, document_number, email]
+              properties:
+                document_type: { type: string, enum: [CC, TI, CE, PASSPORT, OTRO] }
+                document_number: { type: string }
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Código enviado (si el cliente existe).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example: { message: "Si el cliente existe, enviaremos las instrucciones por correo." }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /client/auth/session:
+    post:
+      tags: [Cliente]
+      summary: Abrir sesión de cliente canjeando el OTP (EP1.1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [document_type, document_number, email, otp_code]
+              properties:
+                document_type: { type: string, enum: [CC, TI, CE, PASSPORT, OTRO] }
+                document_number: { type: string }
+                email: { type: string, format: email }
+                otp_code: { type: string }
+      responses:
+        '200':
+          description: Sesión abierta.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  expiresInMinutes: { type: integer }
+              example: { token: "3f2c1b...", expiresInMinutes: 30 }
+        '400':
+          description: |
+            `INVALID_OTP` si el código no coincide o el cliente no existe (mismo código en
+            ambos casos, por anti-enumeración), o `VALIDATION_ERROR`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example: { code: INVALID_OTP, message: "El código es inválido o expiró." }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /client/auth/logout:
+    post:
+      tags: [Cliente]
+      summary: Cerrar sesión de cliente (EP1.1)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Sesión cerrada. Idempotente sin sesión previa.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example: { message: "Sesión cerrada." }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+
+  /clients/me:
+    get:
+      tags: [Cliente]
+      summary: Consultar el perfil del cliente autenticado (EP1.1)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Datos de contacto actuales del cliente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientProfile' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /clients/me/contact/verification:
+    post:
+      tags: [Cliente]
+      summary: Solicitar código para adoptar un correo nuevo (EP1.1)
+      description: |
+        Envía un OTP al **correo nuevo** propuesto, que es la prueba de que el cliente controla
+        esa dirección. El código se valida contra el sujeto `clientId:emailNormalizado`.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_email]
+              properties:
+                new_email: { type: string, format: email }
+      responses:
+        '200':
+          description: Código enviado al correo nuevo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+              example: { message: "Enviamos el código de confirmación al nuevo correo." }
+        '400':
+          description: |
+            `EMAIL_UNCHANGED` si el correo propuesto es el actual, o `VALIDATION_ERROR`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example: { code: EMAIL_UNCHANGED, message: "El correo indicado ya es el actual." }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '409': { $ref: '#/components/responses/EmailTaken' }
+
+  /clients/me/contact:
+    patch:
+      tags: [Cliente]
+      summary: Actualizar los datos de contacto del cliente (EP1.1)
+      description: |
+        Nombres y teléfono se actualizan siempre. Si `email` cambia, `verification_code` es
+        obligatorio y debe coincidir con el OTP enviado a la dirección nueva; al adoptarse el
+        cambio se avisa al correo anterior. Si el correo no cambia, el código se ignora.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, phone, email]
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                phone: { type: string, maxLength: 15 }
+                email: { type: string, format: email }
+                verification_code: { type: string }
+      responses:
+        '200':
+          description: Perfil actualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClientProfile' }
+        '400':
+          description: |
+            `EMAIL_VERIFICATION_REQUIRED` si falta el código del correo nuevo,
+            `INVALID_OTP` si no coincide, o `VALIDATION_ERROR`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              examples:
+                sinCodigo:
+                  value: { code: EMAIL_VERIFICATION_REQUIRED, message: "Debe confirmar el nuevo correo con el código enviado." }
+                codigoInvalido:
+                  value: { code: INVALID_OTP, message: "El código es inválido o expiró." }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '409': { $ref: '#/components/responses/EmailTaken' }
+
+  /companies:
+    get:
+      tags: [Compañías & Negocios]
+      summary: Listar negocios del proveedor (HU-003 / A-08)
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Negocios del proveedor autenticado.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: string, format: uuid }
+                    nit: { type: string }
+                    name: { type: string }
+                    description: { type: string, nullable: true }
+                    address: { type: string }
+                    socialMedia: { type: string, nullable: true }
+                    logoUrl: { type: string, nullable: true }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+    post:
+      tags: [Compañías & Negocios]
+      summary: Registrar negocio (HU-003)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [nit, name, address]
+              properties:
+                nit: { type: string }
+                name: { type: string }
+                description: { type: string }
+                address: { type: string }
+                social_media: { type: string }
+                logo:
+                  type: string
+                  format: binary
+                  description: Imagen PNG o JPEG (máx. 2 MB). Opcional.
+      responses:
+        '201':
+          description: Compañía creada.
+          headers:
+            Location:
+              description: Ruta del recurso recién creado.
+              schema: { type: string }
+              example: /companies/8f14e45f-ea5b-4b1c-9d3a-2c7f6b0a1e93
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/NitTaken' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+
+  /companies/{id}:
+    get:
+      tags: [Compañías & Negocios]
+      summary: Consultar un negocio del proveedor (HU-003 / A-08)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Datos del negocio.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  nit: { type: string }
+                  name: { type: string }
+                  description: { type: string, nullable: true }
+                  address: { type: string }
+                  socialMedia: { type: string, nullable: true }
+                  logoUrl: { type: string, nullable: true }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '404':
+          description: |
+            `COMPANY_NOT_FOUND` si no existe o pertenece a otro proveedor. Responde 404 en
+            ambos casos para no revelar la existencia del recurso ajeno.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              example: { code: COMPANY_NOT_FOUND, message: "Empresa no encontrada." }
+    put:
+      tags: [Compañías & Negocios]
+      summary: Editar datos del negocio (HU-003)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                address: { type: string }
+                social_media: { type: string }
+                logo:
+                  type: string
+                  format: binary
+                  description: Imagen PNG o JPEG (máx. 2 MB). Si se omite, conserva el logo actual.
+      responses:
+        '200': { description: Negocio actualizado. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '404':
+          description: |
+            `COMPANY_NOT_FOUND` si no existe, o `NOT_COMPANY_OWNER` si pertenece a otro
+            proveedor. Ambos responden 404 para no revelar la existencia del recurso ajeno.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              examples:
+                noExiste:
+                  value: { code: COMPANY_NOT_FOUND, message: "Empresa no encontrada." }
+                otroProveedor:
+                  value: { code: NOT_COMPANY_OWNER, message: "La empresa no pertenece al proveedor." }
+        '409': { $ref: '#/components/responses/NitTaken' }
+        '413': { $ref: '#/components/responses/PayloadTooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+
+  /uploads/logos/{file}:
+    get:
+      tags: [Compañías & Negocios]
+      summary: Servir logo de empresa (M-04)
+      # Público: el catálogo y sus logos los consume el cliente sin sesión.
+      security: []
+      parameters:
+        - name: file
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Imagen del logo (`logoUrl` devuelto por POST/PUT /companies).
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ==========================================
+  # ÉPICA 2: CATÁLOGO DE SERVICIOS
+  # ==========================================
+  /comunas:
+    get:
+      tags: [Maestros & Catálogo]
+      summary: Listar comunas de Medellín (HU-008)
+      responses:
+        '200':
+          description: Listado maestro de comunas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: { type: integer }
+                    name: { type: string }
+        '404': { $ref: '#/components/responses/ResourceNotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/InternalError' }
+
+  /categories:
+    get:
+      tags: [Maestros & Catálogo]
+      summary: Consultar categorías normalizadas de servicios (EP2.1)
+      description: |
+        Catálogo público de las categorías definidas por la plataforma. Devuelve el código de
+        la categoría, que es el valor que se usa en `POST /services` y en el filtro `?category=`
+        de `GET /services`, junto con su nombre legible. Ordenado por `label`.
+      responses:
+        '200':
+          description: Lista de categorías.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [code, label]
+                  properties:
+                    code: { type: string, enum: [SALUD, BELLEZA_BIENESTAR, EDUCACION, HOGAR, VEHICULOS, PROFESIONALES, EVENTOS, MASCOTAS, TECNOLOGIA, OTRO] }
+                    label: { type: string }
+
+  /services:
+    get:
+      tags: [Maestros & Catálogo]
+      summary: Consultar catálogo público de servicios (HU-007, HU-008)
+      parameters:
+        - name: comuna_id
+          in: query
+          schema: { type: integer }
+        - name: modality
+          in: query
+          schema: { type: string, enum: [VIRTUAL, PRESENCIAL] }
+        - name: category
+          in: query
+          description: Código de categoría normalizada (EP2.1). Ver `GET /categories`.
+          schema:
+            type: string
+            enum: [SALUD, BELLEZA_BIENESTAR, EDUCACION, HOGAR, VEHICULOS, PROFESIONALES, EVENTOS, MASCOTAS, TECNOLOGIA, OTRO]
+        - name: company_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: q
+          in: query
+          description: >-
+            Búsqueda por texto (EP2.1): coincide como subcadena, sin mayúsculas ni tildes, con el
+            nombre del servicio o con el nombre completo del proveedor. Combinable con los demás
+            filtros; vacío se ignora.
+          schema: { type: string }
+        - name: page
+          in: query
+          description: Página base cero (M-05). Valores negativos se normalizan a 0.
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          description: Elementos por página (M-05). Mayor a 100 responde 400 INVALID_PARAMETER.
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Página del catálogo de servicios disponibles (M-05, envoltorio `PageView`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageViewService' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+    post:
+      tags: [Maestros & Catálogo]
+      summary: Registrar servicio (HU-009, HU-013)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [company_id, name, modality, category, cost, duration_minutes, capacity]
+              properties:
+                company_id: { type: string, format: uuid }
+                comuna_id:
+                  type: integer
+                  description: Obligatoria solo para servicios PRESENCIAL; sin ella la API responde 400 COMUNA_REQUIRED.
+                name: { type: string, maxLength: 100 }
+                modality: { type: string, enum: [VIRTUAL, PRESENCIAL] }
+                category:
+                  type: string
+                  enum: [SALUD, BELLEZA_BIENESTAR, EDUCACION, HOGAR, VEHICULOS, PROFESIONALES, EVENTOS, MASCOTAS, TECNOLOGIA, OTRO]
+                  description: Categoría normalizada obligatoria (EP2.1).
+                cost: { type: number, minimum: 0 }
+                duration_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 480
+                  description: Minutos de duración; el máximo es una jornada de 8 horas.
+                capacity:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  description: >-
+                    Capacidad de atención obligatoria (EP2.2): número de clientes que pueden reservar
+                    la misma franja a la vez. 1 replica el comportamiento histórico.
+                description: { type: string }
+                recommendations: { type: string }
+                start_date:
+                  type: string
+                  format: date
+                  description: |
+                    Inicio del rango de atención. Opcional. Si se envía `end_date` no puede ser
+                    anterior a `start_date`.
+                end_date:
+                  type: string
+                  format: date
+                  description: |
+                    Fin del rango de atención. Opcional. Si se envía `start_date` no puede ser
+                    anterior a `start_date` (400 VALIDATION_ERROR).
+      responses:
+        '201':
+          description: Servicio creado.
+          headers:
+            Location:
+              description: Ruta del recurso recién creado.
+              schema: { type: string }
+              example: /services/3fa85f64-5717-4562-b3fc-2c963f66afa6
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: |
+            `COMPANY_NOT_FOUND` si la empresa no existe, `COMUNA_NOT_FOUND` si la comuna no
+            existe, o `NOT_COMPANY_OWNER` si la empresa es de otro proveedor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+
+  /services/{id}:
+    get:
+      tags: [Maestros & Catálogo]
+      summary: Consultar detalle del servicio (HU-008, HU-009)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Detalle completo con recomendaciones, modalidad y marca.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ServiceView' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    put:
+      tags: [Maestros & Catálogo]
+      summary: Modificar información de un servicio (HU-011)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comuna_id: { type: integer, description: "Obligatorio si la modality es PRESENCIAL." }
+                name: { type: string, maxLength: 100 }
+                modality: { type: string, enum: [VIRTUAL, PRESENCIAL] }
+                category:
+                  type: string
+                  enum: [SALUD, BELLEZA_BIENESTAR, EDUCACION, HOGAR, VEHICULOS, PROFESIONALES, EVENTOS, MASCOTAS, TECNOLOGIA, OTRO]
+                  description: Categoría normalizada; opcional en actualización.
+                cost: { type: number, minimum: 0 }
+                duration_minutes: { type: integer, minimum: 1, maximum: 480 }
+                capacity:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  description: Capacidad de atención (EP2.2); opcional en actualización (null conserva la existente).
+                description: { type: string }
+                recommendations: { type: string }
+                start_date:
+                  type: string
+                  format: date
+                  description: |
+                    Inicio del rango de atención. Opcional; si se envía `end_date` no puede ser
+                    anterior a `start_date`.
+                end_date:
+                  type: string
+                  format: date
+                  description: Fin del rango de atención. Opcional; ver `start_date`.
+                is_active:
+                  type: boolean
+                  description: |
+                    Allows activating or deactivating the service. If omitted, the current
+                    state is preserved; a body without it is a no-op.
+      responses:
+        '200': { description: Servicio actualizado. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: |
+            `SERVICE_NOT_FOUND` si no existe, o `SERVICE_NOT_IN_COMPANY` si pertenece a otra
+            empresa. Ambos responden 404.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+
+  /services/{id}/status:
+    patch:
+      tags: [Maestros & Catálogo]
+      summary: Activar o desactivar servicio (HU-012)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active: { type: boolean }
+      responses:
+        '200': { description: Estado del servicio actualizado. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ==========================================
+  # ÉPICA 3: GESTIÓN DE AGENDAS Y DISPONIBILIDAD
+  # ==========================================
+  /services/{id}/schedules:
+    post:
+      tags: [Agendas & Disponibilidad]
+      summary: Configurar días y horarios de atención (HU-014, HU-015)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [day_of_week, start_time, end_time]
+                properties:
+                  day_of_week: { type: integer, example: 2 } # 1=Lunes, 2=Martes...
+                  start_time: { type: string, example: "09:00" }
+                  end_time: { type: string, example: "16:00" }
+      responses:
+        '201':
+          description: Horarios de atención guardados.
+          headers:
+            Location:
+              description: Ruta del recurso recién creado.
+              schema: { type: string }
+        '400':
+          description: |
+            `INVALID_SCHEDULE` si los horarios se superponen o son inválidos, o
+            `VALIDATION_ERROR` si el cuerpo no cumple el esquema.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    put:
+      tags: [Agendas & Disponibilidad]
+      summary: Modificar días y horarios de atención (HU-016)
+      description: Reemplaza la configuración de horarios existente por la nueva lista.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [day_of_week, start_time, end_time]
+                properties:
+                  day_of_week: { type: integer, example: 2 } # 1=Lunes, 2=Martes...
+                  start_time: { type: string, example: "09:00" }
+                  end_time: { type: string, example: "16:00" }
+      responses:
+        '200': { description: Horarios de atención actualizados. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /services/{id}/availability:
+    get:
+      tags: [Agendas & Disponibilidad]
+      summary: Calendario y franjas horarias disponibles (HU-018, HU-019, HU-020)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Horarios disponibles calculados automáticamente tras evaluar bloqueos y reservas.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    start_time: { type: string, example: "09:00" }
+                    end_time: { type: string, example: "10:00" }
+                    available: { type: boolean }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /blocked-dates:
+    post:
+      tags: [Agendas & Disponibilidad]
+      summary: Bloquear fechas por empresa o servicio específico (HU-017)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [company_id, block_date, reason]
+              properties:
+                company_id: { type: string, format: uuid }
+                service_id: { type: string, format: uuid, description: "Opcional. Si se omite, bloquea toda la empresa." }
+                block_date:
+                  type: string
+                  format: date
+                  description: |
+                    Fecha a bloquear. No puede ser anterior a hoy (400 VALIDATION_ERROR). El
+                    día en curso sí es válido porque el bloqueo aplica desde las 00:00.
+                reason: { type: string, maxLength: 200 }
+      responses:
+        '201':
+          description: Fecha bloqueada correctamente.
+          headers:
+            Location:
+              description: Ruta del recurso recién creado.
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: |
+            `COMPANY_NOT_FOUND`, `COMUNA_NOT_FOUND`, o `NOT_COMPANY_OWNER` si la empresa es de
+            otro proveedor.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+
+  # ==========================================
+  # ÉPICA 4, 5 Y 6: RESERVAS
+  # ==========================================
+  /reservations:
+    post:
+      tags: [Reservas]
+      summary: Crear y confirmar reserva ingresando datos del cliente (HU-021 a HU-029)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [service_id, reservation_date, start_time, end_time, client]
+              properties:
+                service_id: { type: string, format: uuid }
+                reservation_date: { type: string, format: date }
+                start_time: { type: string, example: "10:00" }
+                end_time: { type: string, example: "10:30" }
+                client:
+                  type: object
+                  required: [document_type, document_number, first_name, last_name, phone, email]
+                  properties:
+                    document_type: { type: string, enum: [CC, TI, CE, PASSPORT] }
+                    document_number: { type: string }
+                    first_name: { type: string }
+                    last_name: { type: string }
+                    phone: { type: string }
+                    email: { type: string, format: email }
+      responses:
+        '201':
+          description: Reserva registrada. Retorna la confirmación y previene sobrecupos (HU-037).
+          headers:
+            Location:
+              description: Ruta de la reserva creada.
+              schema: { type: string }
+              example: /reservations/d6e9c2a1-4f83-4b0e-9c7d-1a2b3c4d5e6f
+        '400':
+          description: |
+            `SLOT_NOT_AVAILABLE` no usa este código: la franja ocupada responde 409. Aquí caen
+            `SERVICE_WITHOUT_SCHEDULE`, `DATE_OUT_OF_RANGE`, `DATE_BLOCKED`,
+            `OUTSIDE_ATTENTION_HOURS` y `END_TIME_MISMATCH`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              examples:
+                sinHorario:
+                  value: { code: SERVICE_WITHOUT_SCHEDULE, message: "El servicio no atiende en esa fecha." }
+                franjaOcupada:
+                  value: { code: SLOT_NOT_AVAILABLE, message: "La franja ya no está disponible." }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: |
+            `SLOT_NOT_AVAILABLE` si la franja ya está reservada, o `SERVICE_INACTIVE` si el
+            servicio está desactivado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+              examples:
+                ocupada:
+                  value: { code: SLOT_NOT_AVAILABLE, message: "La franja ya no está disponible." }
+                inactivo:
+                  value: { code: SERVICE_INACTIVE, message: "El servicio se encuentra inactivo." }
+        '415': { $ref: '#/components/responses/UnsupportedMediaType' }
+
+  /reservations/client/{documentNumber}:
+    get:
+      tags: [Reservas]
+      summary: Consultar reservas activas e históricas por documento de identidad (HU-025, HU-030, HU-031)
+      parameters:
+        - name: documentNumber
+          in: path
+          required: true
+          schema: { type: string }
+        - name: page
+          in: query
+          description: Página base cero (M-05).
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          description: Elementos por página (M-05). Mayor a 100 responde 400 INVALID_PARAMETER.
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: >-
+            Página de reservas asociadas a la identificación (M-05, envoltorio `PageView`),
+            ordenadas por fecha descendente y hora de inicio ascendente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageViewReservation' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /reservations/{id}:
+    get:
+      tags: [Reservas]
+      summary: Consultar detalle de una reserva (HU-032)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Detalle de fecha, horario, estado y cliente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationView' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+    put:
+      tags: [Reservas]
+      summary: Modificar reserva activa (HU-033)
+      description: Proveedor autenticado o cliente validando su documento.
+      security: [{ bearerAuth: [] }, {}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reservation_date: { type: string, format: date }
+                start_time: { type: string }
+                end_time: { type: string }
+      responses:
+        '200': { description: Reserva modificada. }
+        '400':
+          description: |
+            `RESERVATION_NOT_ACTIVE` si la reserva no admite cambios,
+            `OUTSIDE_ATTENTION_HOURS`, `DATE_BLOCKED` o `END_TIME_MISMATCH`.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/SlotNotAvailable' }
+
+  /reservations/{id}/cancel:
+    patch:
+      tags: [Reservas]
+      summary: Cancelar reserva con justificación (HU-034)
+      description: |
+        Cliente con sesión corta. El cuerpo **solo** admite el motivo: la autoría (`cancelledBy`) la
+        fija el servidor (B-03, `CLIENT`; `SYSTEM` para las caducidades automáticas). Un campo
+        `cancelled_by` sobrante se ignora; `PROVIDER` ya no existe (D-5).
+      security: [{ bearerAuth: [] }, {}]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cancellation_reason: { type: string }
+      responses:
+        '200': { description: Reserva cancelada y horario liberado para la agenda. }
+        '400':
+          description: "`RESERVATION_NOT_ACTIVE` si la reserva ya no admite cambios."
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiError' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /provider/reservations:
+    get:
+      tags: [Reservas]
+      summary: Consultar agenda de reservas para proveedores (HU-035, HU-036)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED] }
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+        - name: service_id
+          in: query
+          description: Solo reservas de este servicio (EP6.1).
+          schema: { type: string, format: uuid }
+        - name: from_date
+          in: query
+          description: Límite inferior del rango, incluido.
+          schema: { type: string, format: date }
+        - name: to_date
+          in: query
+          description: Límite superior del rango, incluido. Si precede a from_date, 400 INVALID_PARAMETER.
+          schema: { type: string, format: date }
+        - name: page
+          in: query
+          description: Página base cero (M-05).
+          schema: { type: integer, default: 0, minimum: 0 }
+        - name: size
+          in: query
+          description: Elementos por página (M-05). Mayor a 100 responde 400 INVALID_PARAMETER.
+          schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Página filtrada para administración del proveedor (M-05, envoltorio `PageView`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageViewReservation' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ==========================================
+  # ÉPICA 7: REPORTES
+  # ==========================================
+  /reports/reservations:
+    get:
+      tags: [Reportes]
+      summary: Reporte de reservas realizadas (HU-038)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: service_id
+          in: query
+          description: Solo reservas de este servicio (A-09).
+          schema: { type: string, format: uuid }
+        - name: from_date
+          in: query
+          description: Límite inferior del rango, incluido.
+          schema: { type: string, format: date }
+        - name: to_date
+          in: query
+          description: Límite superior del rango, incluido. Si precede a from_date, 400 INVALID_PARAMETER.
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: Métricas agregadas de reservas efectuadas. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /reports/occupancy:
+    get:
+      tags: [Reportes]
+      summary: Nivel de ocupación por horarios (HU-039)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: service_id
+          in: query
+          description: Solo servicios y reservas de este servicio (A-09).
+          schema: { type: string, format: uuid }
+        - name: from_date
+          in: query
+          description: Límite inferior del rango, incluido.
+          schema: { type: string, format: date }
+        - name: to_date
+          in: query
+          description: Límite superior del rango, incluido. Si precede a from_date, 400 INVALID_PARAMETER.
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: Porcentaje de uso sobre la capacidad configurada. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /reports/demand:
+    get:
+      tags: [Reportes]
+      summary: Cola de mayor y menor demanda (HU-040)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: service_id
+          in: query
+          description: Solo servicios y reservas de este servicio (A-09).
+          schema: { type: string, format: uuid }
+        - name: from_date
+          in: query
+          description: Límite inferior del rango, incluido.
+          schema: { type: string, format: date }
+        - name: to_date
+          in: query
+          description: Límite superior del rango, incluido. Si precede a from_date, 400 INVALID_PARAMETER.
+          schema: { type: string, format: date }
+        - name: order
+          in: query
+          description: 'DESC = mayor demanda (default). ASC = menor demanda e incluye los servicios activos sin reservas (M-11).'
+          schema: { type: string, enum: [DESC, ASC], default: DESC }
+        - name: limit
+          in: query
+          description: Tamaño de la lista, 1–100. Fuera de rango, 400 INVALID_PARAMETER (M-11).
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+      responses:
+        '200': { description: Ranking de servicios más (o menos) solicitados. }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  # ==========================================
+  # ADMINISTRACIÓN (D-4) — solo ROLE_ADMIN
+  # ==========================================
+  /admin/overview:
+    get:
+      tags: [Administración]
+      summary: Estado agregado de la plataforma (D-4)
+      description: |
+        Tablero de solo lectura para el rol Administrador. Cuenta proveedores, negocios, servicios
+        (totales y activos), clientes y reservas por estado. No expone datos personales ni permite
+        operar sobre los recursos de los proveedores.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Métricas agregadas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers: { type: integer }
+                  companies: { type: integer }
+                  services: { type: integer }
+                  activeServices: { type: integer }
+                  clients: { type: integer }
+                  reservations:
+                    type: object
+                    properties:
+                      total: { type: integer }
+                      pending: { type: integer }
+                      confirmed: { type: integer }
+                      cancelled: { type: integer }
+                      completed: { type: integer }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/providers:
+    get:
+      tags: [Administración]
+      summary: Listar proveedores con su número de negocios (D-4)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Página de proveedores (`PageView`).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        firstName: { type: string }
+                        lastName: { type: string }
+                        email: { type: string, format: email }
+                        verified: { type: boolean }
+                        companies: { type: integer }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+                  totalPages: { type: integer }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-token
+
+  headers:
+    RetryAfter:
+      description: |
+        Segundos que deben transcurrir antes de reintentar. Aparece en las respuestas 429
+        del límite de tasa por IP.
+      schema: { type: integer, minimum: 1 }
+
+  schemas:
+
+    ApiError:
+      type: object
+      description: |
+        Cuerpo único de error de la API. `fields` solo aparece en errores de validación;
+        se omite en el resto, de modo que el cliente puede deserializar siempre este tipo.
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Código estable de error. La lógica del cliente debe decidir sobre este valor.
+          example: SLOT_NOT_AVAILABLE
+        message:
+          type: string
+          description: Texto legible para la persona usuaria. Puede cambiar sin romper clientes.
+          example: La franja ya no está disponible.
+        fields:
+          type: array
+          description: Detalle por campo. Solo presente en errores de validación.
+          items: { $ref: '#/components/schemas/FieldIssue' }
+      examples:
+        dominio:
+          value: { code: SLOT_NOT_AVAILABLE, message: "La franja ya no está disponible." }
+        validacion:
+          value:
+            code: VALIDATION_ERROR
+            message: "La solicitud contiene datos inválidos."
+            fields:
+              - { field: email, message: "no puede estar vacío" }
+              - { field: password, message: "la longitud debe estar entre 8 y 72" }
+
+    FieldIssue:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: Nombre del campo que falló la validación.
+        message:
+          type: string
+          description: Motivo del fallo, legible para la persona usuaria.
+
+    ClientProfile:
+      type: object
+      description: Datos de contacto del cliente autenticado (EP1.1).
+      properties:
+        documentType: { type: string, enum: [CC, TI, CE, PASSPORT, OTRO] }
+        documentNumber: { type: string }
+        firstName: { type: string }
+        lastName: { type: string }
+        phone: { type: string }
+        email: { type: string, format: email }
+
+    ServiceView:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        modality: { type: string, enum: [VIRTUAL, PRESENCIAL] }
+        category: { type: string, enum: [SALUD, BELLEZA_BIENESTAR, EDUCACION, HOGAR, VEHICULOS, PROFESIONALES, EVENTOS, MASCOTAS, TECNOLOGIA, OTRO] }
+        cost: { type: number }
+        duration_minutes: { type: integer }
+        capacity: { type: integer, description: "Clientes simultáneos por franja (EP2.2)." }
+        description: { type: string }
+        recommendations: { type: string }
+        is_active: { type: boolean }
+        company_name: { type: string }
+        comuna_name: { type: string, description: "Solo en modalidad PRESENCIAL." }
+
+    ReservationView:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        service_id: { type: string, format: uuid }
+        service_name: { type: string }
+        reservation_date: { type: string, format: date }
+        start_time: { type: string, example: "10:00" }
+        end_time: { type: string, example: "10:30" }
+        status: { type: string, enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED] }
+        client_document_number: { type: string }
+        client_name: { type: string }
+
+    PageViewService:
+      type: object
+      description: Página del catálogo (M-05). `page` es base cero.
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ServiceView' }
+        page: { type: integer, example: 0 }
+        size: { type: integer, example: 20 }
+        totalElements: { type: integer, example: 57 }
+        totalPages: { type: integer, example: 3 }
+
+    PageViewReservation:
+      type: object
+      description: Página de reservas (M-05). `page` es base cero.
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ReservationView' }
+        page: { type: integer, example: 0 }
+        size: { type: integer, example: 20 }
+        totalElements: { type: integer, example: 3 }
+        totalPages: { type: integer, example: 1 }
+
+  responses:
+
+    BadRequest:
+      description: |
+        La solicitud no se puede procesar. El código distingue el motivo: validación de
+        campos (`VALIDATION_ERROR`), JSON malformado (`MALFORMED_JSON`), multipart malformado
+        (`MALFORMED_REQUEST`), parámetro inválido (`INVALID_PARAMETER`), parámetro faltante
+        (`MISSING_PARAMETER`) o una regla de negocio (`DATE_BLOCKED`,
+        `OUTSIDE_ATTENTION_HOURS`, etc.).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            validacion:
+              value:
+                code: VALIDATION_ERROR
+                message: "La solicitud contiene datos inválidos."
+                fields: [{ field: email, message: "no puede estar vacío" }]
+            jsonInvalido:
+              value: { code: MALFORMED_JSON, message: "El cuerpo de la solicitud no es un JSON válido." }
+            multipartInvalido:
+              value:
+                code: MALFORMED_REQUEST
+                message: "La solicitud no tiene un formato válido para este recurso."
+            regla:
+              value: { code: OUTSIDE_ATTENTION_HOURS, message: "La franja está fuera del horario de atención." }
+            logoInvalido:
+              value: { code: INVALID_LOGO, message: "El logo debe ser una imagen PNG o JPEG." }
+
+    AuthRequired:
+      description: |
+        No se envió token, o el token no es válido o expiró. Incluye la cabecera
+        `WWW-Authenticate` que describe el esquema esperado.
+      headers:
+        WWW-Authenticate:
+          description: |
+            Desafío de autenticación. Con token expirado o inválido incluye
+            `error="invalid_token"`.
+          schema: { type: string }
+          example: Bearer realm="servas"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            sinToken:
+              value: { code: AUTH_REQUIRED, message: "Se requiere autenticación." }
+            tokenInvalido:
+              value: { code: TOKEN_INVALID, message: "El token de sesión es inválido o expiró." }
+
+    TokenInvalid:
+      description: El token de sesión no es válido, expiró o fue revocado.
+      headers:
+        WWW-Authenticate:
+          description: Desafío de autenticación con `error="invalid_token"`.
+          schema: { type: string }
+          example: Bearer realm="servas", error="invalid_token"
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: TOKEN_INVALID, message: "El token de sesión es inválido o expiró." }
+
+    InvalidCredentials:
+      description: El correo o la contraseña no coinciden.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: INVALID_CREDENTIALS, message: "Correo o contraseña incorrectos." }
+
+    EmailNotVerified:
+      description: |
+        Las credenciales son correctas pero el correo aún no está verificado. Deliberadamente
+        403 y no 401: la identidad es conocida, solo falta un paso previo.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: EMAIL_NOT_VERIFIED, message: "Debe verificar su correo antes de iniciar sesión." }
+
+    Forbidden:
+      description: |
+        La identidad es conocida pero no tiene permiso sobre el recurso.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: FORBIDDEN, message: "No tiene permisos para acceder a este recurso." }
+
+    NotFound:
+      description: |
+        El recurso no existe o no debe revelarse. Los recursos de otro proveedor responden
+        aquí, no con 403, para no filtrar su existencia.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          examples:
+            noExiste:
+              value: { code: SERVICE_NOT_FOUND, message: "Servicio no encontrado." }
+            otroProveedor:
+              value: { code: NOT_COMPANY_OWNER, message: "La empresa no pertenece al proveedor." }
+
+    EmailTaken:
+      description: El correo ya está registrado.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: EMAIL_TAKEN, message: "El correo ya se encuentra registrado." }
+
+    NitTaken:
+      description: El NIT ya está registrado.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: NIT_TAKEN, message: "El NIT ya se encuentra registrado." }
+
+    SlotNotAvailable:
+      description: La franja ya está reservada.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: SLOT_NOT_AVAILABLE, message: "La franja ya no está disponible." }
+
+    PayloadTooLarge:
+      description: El archivo enviado supera el tamaño máximo permitido.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: PAYLOAD_TOO_LARGE, message: "El archivo supera el tamaño máximo permitido." }
+
+    UnsupportedMediaType:
+      description: |
+        El `Content-Type` enviado no es compatible con el endpoint. En los endpoints de empresa
+        el cuerpo debe ser `multipart/form-data`.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: UNSUPPORTED_MEDIA_TYPE, message: "El tipo de contenido no está soportado por este recurso." }
+
+    RateLimited:
+      description: |
+        Se superó el límite de peticiones por IP del endpoint. Reintentar tras el número de
+        segundos indicado en `Retry-After`.
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfter'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiError' }
+          example: { code: RATE_LIMITED, message: "Demasiadas solicitudes. Intente nuevamente en unos instantes." }

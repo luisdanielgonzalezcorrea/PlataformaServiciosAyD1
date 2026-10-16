@@ -1,0 +1,333 @@
+/* ==========================================================================
+   Capa 2 · profundidad
+   Solo presentación. Va después de index.css y lo sobreescribe: fondo con
+   atmósfera, superficies en capas, luz sobre el hero y relieve en lo
+   interactivo. Nada de acá toca la lógica.
+   ========================================================================== */
+
+:root {
+  --grad-selva: linear-gradient(135deg, #136b57 0%, #0e4d3f 48%, #072a22 100%);
+  --grad-selva-btn: linear-gradient(180deg, #14705a 0%, #0e4d3f 100%);
+  --grad-girasol: linear-gradient(180deg, #ffd567 0%, #ffc53d 100%);
+  --borde-luz: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --sombra-card: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 1px 2px rgba(14, 77, 63, 0.08),
+    0 12px 24px -12px rgba(14, 77, 63, 0.22), 0 36px 64px -32px rgba(7, 42, 34, 0.3);
+  --sombra-alta: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 2px 4px rgba(14, 77, 63, 0.1),
+    0 22px 40px -14px rgba(14, 77, 63, 0.32), 0 54px 90px -40px rgba(7, 42, 34, 0.45);
+}
+
+/* ---------- Atmósfera de página ---------- */
+body {
+  background:
+    radial-gradient(900px 520px at 100% -8%, rgba(255, 197, 61, 0.2), transparent 60%),
+    radial-gradient(760px 520px at -6% 18%, rgba(14, 107, 87, 0.16), transparent 62%),
+    radial-gradient(700px 480px at 92% 88%, rgba(194, 37, 127, 0.07), transparent 60%),
+    linear-gradient(180deg, #f3f7f4 0%, #e8f0ea 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* ---------- Header: vidrio con filo de luz ---------- */
+.header {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 251, 248, 0.82));
+  border-bottom: 1px solid rgba(14, 77, 63, 0.1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset, 0 10px 30px -18px rgba(7, 42, 34, 0.35);
+}
+.header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--selva) 0 40%, var(--girasol) 40% 70%, var(--cattleya) 70% 100%);
+  opacity: 0.9;
+}
+
+/* ---------- Botones con volumen ---------- */
+.btn--primary {
+  background: var(--grad-selva-btn);
+  border-color: #0a3b30;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 1px 2px rgba(7, 42, 34, 0.35),
+    0 8px 16px -8px rgba(14, 77, 63, 0.7);
+}
+.btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #188066 0%, #0e5a49 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 4px rgba(7, 42, 34, 0.3),
+    0 16px 26px -10px rgba(14, 77, 63, 0.75);
+}
+.btn--ghost {
+  background: linear-gradient(180deg, #ffffff, #f4f8f5);
+  box-shadow: var(--borde-luz), 0 1px 2px rgba(14, 77, 63, 0.1);
+}
+.btn--ghost:hover:not(:disabled) {
+  box-shadow: var(--borde-luz), 0 8px 16px -10px rgba(14, 77, 63, 0.4);
+}
+
+/* ---------- Superficies ---------- */
+.card,
+.panel {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+  border: 1px solid rgba(14, 77, 63, 0.1);
+  box-shadow: var(--sombra-card);
+  position: relative;
+}
+.auth-card::before,
+.form-card::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  top: -1px;
+  height: 4px;
+  border-radius: 0 0 6px 6px;
+  background: linear-gradient(90deg, var(--selva) 0 55%, var(--girasol) 55% 82%, var(--cattleya) 82%);
+}
+.panel__head {
+  border-bottom: 1px dashed var(--linea);
+}
+
+.field input,
+.field select,
+.field textarea,
+.filters select,
+.range input,
+.range select {
+  background: linear-gradient(180deg, #f6f9f7, #ffffff);
+  box-shadow: inset 0 1px 2px rgba(14, 77, 63, 0.08);
+}
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.filters select:focus,
+.range input:focus {
+  background: #fff;
+}
+
+/* ---------- Hero: luz, profundidad y una tarjeta flotante ---------- */
+.hero {
+  background:
+    radial-gradient(620px 360px at 88% 0%, rgba(255, 197, 61, 0.34), transparent 62%),
+    radial-gradient(560px 420px at 4% 110%, rgba(194, 37, 127, 0.3), transparent 64%),
+    radial-gradient(700px 400px at 40% -20%, rgba(60, 170, 140, 0.45), transparent 60%),
+    var(--grad-selva);
+  padding: 68px 20px 118px;
+  box-shadow: 0 30px 60px -36px rgba(7, 42, 34, 0.7);
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: auto -10% -1px -10%;
+  height: 54px;
+  background: var(--niebla);
+  clip-path: ellipse(60% 100% at 50% 100%);
+  opacity: 0.0;
+  pointer-events: none;
+}
+.hero h1 {
+  text-shadow: 0 2px 24px rgba(7, 42, 34, 0.45);
+}
+.hero p {
+  color: rgba(255, 255, 255, 0.88);
+}
+@media (max-width: 900px) {
+  .hero { padding: 48px 20px 100px; }
+}
+
+/* ---------- Filtros: panel flotante ---------- */
+.filters {
+  background: linear-gradient(180deg, #ffffff, #f8fbf9);
+  border: 1px solid rgba(14, 77, 63, 0.1);
+  box-shadow: var(--sombra-alta);
+}
+
+/* ---------- Tarjetas de servicio ---------- */
+.svc-card {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fcfa 100%);
+  border: 1px solid rgba(14, 77, 63, 0.1);
+  box-shadow: var(--sombra-card);
+  padding-top: 26px;
+}
+.svc-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 5px;
+  background: linear-gradient(90deg, var(--selva), #2f9b80);
+}
+.svc-card:has(.tag--virtual)::before {
+  background: linear-gradient(90deg, var(--cattleya), #e25aa8);
+}
+.svc-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  top: 28px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 107, 87, 0.1), transparent 68%);
+  pointer-events: none;
+}
+.svc-card:has(.tag--virtual)::after {
+  background: radial-gradient(circle, rgba(194, 37, 127, 0.1), transparent 68%);
+}
+.svc-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sombra-alta);
+  border-color: rgba(14, 77, 63, 0.22);
+}
+.svc-card__foot {
+  border-top: 1px dashed var(--linea);
+  margin-top: auto;
+  padding-top: 16px;
+}
+.svc-card__price {
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Detalle del servicio y calendario ---------- */
+.detail__head {
+  position: relative;
+  padding: 26px 28px;
+  border-radius: var(--r-panel);
+  color: #fff;
+  background:
+    radial-gradient(420px 240px at 100% 0%, rgba(255, 197, 61, 0.3), transparent 62%),
+    var(--grad-selva);
+  box-shadow: var(--sombra-alta);
+}
+.detail__head h1,
+.detail__head .detail__price,
+.detail__head .detail__duration,
+.detail__head .detail__meta {
+  color: #fff;
+}
+.day {
+  background: linear-gradient(180deg, #ffffff, #f4f8f5);
+  box-shadow: var(--borde-luz), 0 1px 2px rgba(14, 77, 63, 0.1);
+}
+.day--available { background: linear-gradient(180deg, #e9f8ef, #d6f0e1); }
+.day--partial { background: linear-gradient(180deg, #fff6da, #ffecb0); }
+.day--full { background: linear-gradient(180deg, #fdecec, #f8d6d6); }
+.day--disabled { background: transparent; box-shadow: none; }
+.day--selected,
+.day--selected:hover {
+  background: var(--grad-selva-btn);
+  box-shadow: 0 10px 18px -8px rgba(14, 77, 63, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.slot {
+  background: linear-gradient(180deg, #ffffff, #f4f8f5);
+  box-shadow: var(--borde-luz), 0 1px 2px rgba(14, 77, 63, 0.1);
+}
+.slot:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--borde-luz), 0 10px 18px -10px rgba(14, 77, 63, 0.45);
+}
+.slot--active,
+.slot--active:hover {
+  background: var(--grad-selva-btn);
+  box-shadow: 0 10px 18px -8px rgba(14, 77, 63, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+/* ---------- Pasos de la reserva ---------- */
+.stepper {
+  background: linear-gradient(180deg, #ffffff, #f6faf7);
+  border: 1px solid rgba(14, 77, 63, 0.1);
+  border-radius: 999px;
+  padding: 8px 12px;
+  box-shadow: var(--sombra-card);
+}
+.service-mini {
+  background: linear-gradient(135deg, #eaf4ee, #f7fbf8);
+  border: 1px solid rgba(14, 77, 63, 0.12);
+  box-shadow: var(--borde-luz);
+}
+
+/* ---------- Mis reservas ---------- */
+.res-item {
+  position: relative;
+  background: linear-gradient(180deg, #ffffff, #f8fbf9);
+  border: 1px solid rgba(14, 77, 63, 0.1);
+  box-shadow: var(--sombra-card);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.res-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  background: linear-gradient(180deg, var(--girasol), #f0a800);
+}
+.res-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-alta);
+}
+.res-item--open {
+  box-shadow: var(--sombra-alta);
+}
+.res-item__detail {
+  background: linear-gradient(180deg, #f3f8f5, #ffffff);
+}
+.badge {
+  box-shadow: inset 0 0 0 1px rgba(14, 77, 63, 0.12);
+}
+.alert {
+  box-shadow: var(--borde-luz), 0 8px 18px -12px rgba(14, 77, 63, 0.35);
+}
+
+/* ---------- Ticket de confirmación ---------- */
+.ticket {
+  box-shadow: var(--sombra-alta), 0 0 0 1px rgba(14, 77, 63, 0.08);
+}
+.ticket__top {
+  background:
+    radial-gradient(360px 200px at 100% 0%, rgba(255, 197, 61, 0.32), transparent 62%),
+    var(--grad-selva);
+}
+
+/* ---------- Auth ---------- */
+.auth-page {
+  background:
+    radial-gradient(520px 320px at 50% 0%, rgba(14, 107, 87, 0.12), transparent 70%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svc-card,
+  .res-item,
+  .slot {
+    transition: none;
+  }
+  .svc-card:hover,
+  .res-item:hover,
+  .slot:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Detalle: textos claros sobre el verde y botón girasol */
+.detail__head .muted,
+.detail__head .small {
+  color: rgba(255, 255, 255, 0.82);
+}
+.detail__head strong {
+  color: #fff;
+}
+.detail__head .btn--primary {
+  background: var(--grad-girasol);
+  border-color: #e0a800;
+  color: var(--tinta);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 14px 24px -10px rgba(0, 0, 0, 0.5);
+}
+.detail__head .btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffdc85, #ffc53d);
+  color: var(--tinta);
+}
+.detail__head .detail__price {
+  font-size: 1.7rem;
+}
