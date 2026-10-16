@@ -98,34 +98,32 @@ El front de estas HU está hecho y probado; para cerrarlas al 100 % falta lo sig
 
 ---
 
-## 5. Falta el correo de confirmación de la reserva (HU-029)
+## 5. El correo está pero faltan los datos de la reserva (HU-029)
 
-Como se indica en la tabla anterior 
+**Qué pasa:** al confirmar la reserva con el OTP, el correo "Tu reserva en agenda.co está confirmada"
+**sí llega**. Trae el servicio, la fecha y la
+hora, pero **no trae el código de la reserva**.
 
-**Qué pasa:** cuando el cliente confirma su reserva con el código (`POST /reservations/{id}/confirm`)
-y queda en `CONFIRMED`, no le llega ningún correo diciendo que la reserva quedó confirmada.
+**Por qué:** el código `RSV-XXXXXXXX` que ve el cliente en pantalla lo arma el front, con `RSV-` más
+los primeros 8 caracteres del `id` de la reserva en mayúsculas (sin guiones). El back no usa ese
+código y la plantilla del correo no incluye el `id`, así que el cliente no tiene cómo relacionar el
+correo con lo que ve en la pantalla.
 
-**Qué vimos en el código:** `ClientMailNotifier` solo tiene tres envíos, y los tres son códigos OTP:
-`sendSessionOtp` (sesión de cliente), `sendReservationOtp` (el código para confirmar) y
-`sendContactVerificationOtp` (verificar el contacto). Después de confirmar o de cancelar no se
-manda nada. Lo único que recibe el cliente es el código, no la constancia.
+**Proponemos (cualquiera de las dos):**
+1. Que el correo de confirmación incluya el código, armado igual que el front. Ejemplo para el id
+   `79898eee-21d1-415d-b401-159a83c30bf1`: `RSV-79898EEE`.
+2. O que el back genere y guarde ese código, y lo devuelva en la respuesta de la reserva
+   (`reservationCode`). Así el correo, la pantalla y la consulta en "Mis reservas" muestran el mismo
+   valor, y el front deja de calcularlo.
 
-**Proponemos:**
-1. Al pasar la reserva a `CONFIRMED`, enviar al correo del cliente un mensaje de confirmación con:
-   servicio, negocio, fecha, hora de inicio y fin, código de reserva (el `RSV-XXXXXXXX` que ya se
-   muestra en pantalla), dirección o enlace según la modalidad, y la regla de cancelación (hasta 2
-   horas antes).
-2. Opcional: un correo al cancelar (por el cliente) con el motivo y el horario liberado.
-3. Que el envío no bloquee la respuesta: si el correo falla, la reserva queda confirmada igual (como
-   ya se hace con el OTP) y se deja registro en el log.
-4. Agregar el mensaje a `ClientMailContent` junto a los otros correos, con el mismo estilo.
+**Opcional:** que el correo también traiga el negocio, la hora de fin, la dirección o el enlace según
+la modalidad y la regla de cancelación (hasta 2 horas antes). Tampoco se envía correo al cancelar.
 
-**Cómo lo comprobamos nosotros:** con el back en Docker, `http://localhost:8025` (Mailpit) debe
-mostrar un segundo correo, además del que trae el código, justo después de confirmar. Hoy solo
-aparece el del código.
+**Cómo lo comprobamos:** con el back en Docker, confirmar una reserva y abrir Mailpit. El segundo
+correo debe mostrar el código `RSV-…` igual al de la pantalla de reserva confirmada.
 
-**El front** ya no necesita cambios: la pantalla de reserva confirmada muestra el código y los datos
-de la reserva, y no depende de ese correo.
+**El front:** no necesita cambios para la opción 1. Con la opción 2 solo cambia una línea, para leer
+`reservationCode` en vez de calcularlo.
 
 ---
 
