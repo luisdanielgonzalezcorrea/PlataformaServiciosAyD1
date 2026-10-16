@@ -67,6 +67,7 @@ reserva. Con `capacity > 1` (por ejemplo una clase con varios cupos, migración 
 cliente puede ocupar varios cupos de la misma franja**. Además, la migración V6 eliminó la
 restricción de exclusión `ex_reservations_no_overlap` (V4), así que la base de datos tampoco lo
 impide.
+
 ---
 
 ## 3. Diferencias entre el Swagger y el código
