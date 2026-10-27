@@ -22,6 +22,7 @@ export const KNOWN_DIVERGENCES = {
   },
   MISSING_IN_SWAGGER: {
     "POST /reservations/{id}/confirm": "Existe en ReservationController pero no está en el Swagger",
+    "GET /services/{id}/availability/month": "Endpoint nuevo del back (PR feat/pendientes-ayd1); esta copia del Swagger todavía no lo trae",
   },
 };
 

@@ -282,9 +282,13 @@ export async function confirmReservation(id, otpCode) {
 }
 
 /**
- * Código corto que le mostramos al cliente (HU-029). El back no tiene un campo "code"
- * aparte: usamos los primeros 8 caracteres del id (UUID) en mayúscula.
+ * Código corto que le mostramos al cliente (HU-029). Usamos el `reservationCode` que manda
+ * el back (RSV-XXXXXXXX). Si la respuesta no lo trae, lo armamos igual que el back: `RSV-` más
+ * los primeros 8 caracteres del id (UUID) en mayúscula. Acepta la reserva o solo su id.
  */
-export function reservationCode(id) {
+export function reservationCode(reservationOrId) {
+  const fromBack = reservationOrId && typeof reservationOrId === "object" ? reservationOrId.reservationCode : null;
+  if (fromBack) return fromBack;
+  const id = reservationOrId && typeof reservationOrId === "object" ? reservationOrId.id : reservationOrId;
   return `RSV-${String(id).replace(/-/g, "").slice(0, 8).toUpperCase()}`;
 }

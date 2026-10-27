@@ -68,7 +68,7 @@ function recallSchedule(serviceId) {
 
 /**
  * Horarios ya configurados de un servicio, para precargar "Mi agenda".
- * Primero intenta GET /services/{id}/schedules (lo que pedimos a AyD2 en PENDIENTES-BACK.md).
+ * Primero intenta GET /services/{id}/schedules (pendiente de AyD2).
  * Mientras el back no lo tenga (404/405), usa la copia que este navegador guardó al configurar.
  * Devuelve { items, source }: "server" | "local" | "none".
  */
@@ -221,6 +221,62 @@ async function inBatches(items, size, fn) {
  * detecta). Con un endpoint mensual del back esto desaparece.
  */
 export async function getMonthAvailability(service, year, monthIndex) {
+  const fromServer = await getMonthFromServer(service, year, monthIndex);
+  if (fromServer) return fromServer;
+  return getMonthByDays(service, year, monthIndex);
+}
+
+/* Endpoint mensual del back: GET /services/{id}/availability/month?month=YYYY-MM
+ * Trae el estado de cada día en una sola llamada (AVAILABLE, PARTIAL, FULL, UNAVAILABLE).
+ * Si el back todavía no lo tiene (404/405/400) o la respuesta no se reconoce, devolvemos
+ * null y getMonthAvailability usa el cálculo día por día de siempre. */
+const SERVER_STATUS = {
+  AVAILABLE: DAY_STATUS.AVAILABLE,
+  PARTIAL: DAY_STATUS.PARTIAL,
+  FULL: DAY_STATUS.FULL,
+  UNAVAILABLE: DAY_STATUS.DISABLED,
+  DISABLED: DAY_STATUS.DISABLED,
+};
+let monthEndpointMissing = false;
+
+function normalizeMonth(data) {
+  // Acepta una lista [{ date, status }] o un objeto { "2026-10-05": "AVAILABLE" | { status } }.
+  const pairs = [];
+  if (Array.isArray(data)) {
+    for (const row of data) pairs.push([row?.date ?? row?.day, row?.status]);
+  } else if (data && typeof data === "object") {
+    const rows = Array.isArray(data.days) ? data.days : null;
+    if (rows) for (const row of rows) pairs.push([row?.date ?? row?.day, row?.status]);
+    else for (const [date, v] of Object.entries(data)) pairs.push([date, typeof v === "string" ? v : v?.status]);
+  }
+  const out = {};
+  for (const [date, status] of pairs) {
+    const mapped = SERVER_STATUS[String(status || "").toUpperCase()];
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(date)) && mapped) out[date] = { status: mapped, slots: [] };
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+async function getMonthFromServer(service, year, monthIndex) {
+  if (USE_MOCKS || monthEndpointMissing) return null;
+  const month = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+  try {
+    const { data } = await httpClient.get(`/services/${service.id}/availability/month`, { params: { month } });
+    const parsed = normalizeMonth(data);
+    if (!parsed) return null;
+    const result = {};
+    for (let d = 1; d <= daysInMonth(year, monthIndex); d++) {
+      const iso = `${month}-${String(d).padStart(2, "0")}`;
+      result[iso] = parsed[iso] || { status: DAY_STATUS.DISABLED, slots: [] };
+    }
+    return result;
+  } catch (err) {
+    if ([404, 405].includes(err?.status)) monthEndpointMissing = true;
+    return null;
+  }
+}
+
+async function getMonthByDays(service, year, monthIndex) {
   const total = daysInMonth(year, monthIndex);
   const today = todayISO();
   const days = [];

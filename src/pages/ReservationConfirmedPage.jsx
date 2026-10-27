@@ -25,7 +25,7 @@ export default function ReservationConfirmedPage() {
   if (!state?.reservation) return <Navigate to="/" replace />;
 
   const { reservation, service, client } = state;
-  const code = reservationCode(reservation.id);
+  const code = reservationCode(reservation);
 
   return (
     <div className="ticket">

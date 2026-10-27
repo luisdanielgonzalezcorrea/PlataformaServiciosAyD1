@@ -106,7 +106,7 @@ export default function ActiveReservations({ documentNumber, onSessionExpired, c
                   <div className="res-item__detail">
                     <dl className="summary">
                       <div><dt>Proveedor</dt><dd>{r.companyName || "—"}</dd></div>
-                      <div><dt>Código</dt><dd>{reservationCode(r.id)}</dd></div>
+                      <div><dt>Código</dt><dd>{reservationCode(r)}</dd></div>
                       <div><dt>Horario</dt><dd>{formatTime(r.startTime)} a {formatTime(r.endTime)}</dd></div>
                     </dl>
                     {!compact && (

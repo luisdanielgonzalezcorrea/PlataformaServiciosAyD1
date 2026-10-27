@@ -49,6 +49,9 @@ Se cambia en el `.env`:
 - `VITE_USE_MOCKS=false`: usa el back de verdad en `VITE_API_BASE_URL`, que por defecto es
   `http://localhost:8080` (sin `/api`, el back no lo usa).
 
+En los mocks "Clase de yoga personalizada" no tiene agenda, para ver el botón Reservar
+deshabilitado. "Consulta psicológica" tiene un día agotado y otro a medias.
+
 ### Con el back
 
 1. En la carpeta del back: `docker compose up -d`.
@@ -57,6 +60,9 @@ Se cambia en el `.env`:
    se leen en Mailpit: http://localhost:8025.
 4. Si el front corre en un origen distinto de `localhost:5173` o `localhost:3000`, hay que
    agregarlo en `CORS_ALLOWED_ORIGINS` del back.
+
+Ojo: lo probamos completo en modo mock. Contra el back leímos los controladores para armar las
+rutas y los cuerpos, pero falta una prueba de punta a punta con todo levantado.
 
 ## Cómo funciona la reserva con el back
 
@@ -86,7 +92,7 @@ documento). La usamos para traer sus datos, ver sus reservas activas y cancelar.
 
 ## Pendientes con el back
 
-Más detalle en `PENDIENTES-BACK.md`.
+Más detalle en `README-FRONT.md`.
 
 1. El back solo da disponibilidad por día, no por mes. Para pintar el calendario hacemos una
    consulta por cada día del mes (con caché). "Parcialmente ocupado" lo sacamos comparando con

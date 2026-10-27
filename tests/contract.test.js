@@ -125,15 +125,16 @@ describe("Épica 3 · Agenda y disponibilidad (HU-013, 014, 018, 019, 020)", () 
     expectNoContractProblems();
     expect(calls.at(-1).params).toEqual({ date: "2099-01-05" });
   });
-  it("HU-018/019 el calendario mensual solo usa el endpoint diario", async () => {
+  it("HU-018/019 el calendario mensual prueba el endpoint mensual y, si no existe, usa el diario", async () => {
     installContractAdapter(REAL_AVAILABILITY);
     const service = { id: SVC, startDate: null, endDate: null, isActive: true };
     const hoy = new Date();
     await schedule.getMonthAvailability(service, hoy.getFullYear(), hoy.getMonth());
     expectNoContractProblems();
     expect(calls.length).toBeGreaterThan(0);
-    expect(calls.every((c) => c.key === "GET /services/{id}/availability")).toBe(true);
-    expect(calls.length).toBeLessThanOrEqual(31);
+    const daily = calls.filter((c) => c.key === "GET /services/{id}/availability");
+    expect(calls.every((c) => c.key === "GET /services/{id}/availability" || c.key === "GET /services/{id}/availability/month")).toBe(true);
+    expect(daily.length).toBeLessThanOrEqual(31);
   });
 });
 
