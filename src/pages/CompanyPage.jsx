@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import ServicePage from "./ServicePage";
 import { getComunas } from "../api/catalogService";
 import { getMyCompany, createCompany } from "../api/companyService"; // Importamos createCompany
@@ -149,7 +150,9 @@ export default function CompanyPage() {
   }
 
   // VISTA 2: SI YA TIENE EMPRESA CREADA
-  return <ServicePage
+  return <>
+    <p className="center small"><Link to="/negocio/editar">Editar datos del negocio</Link> · <Link to="/mis-servicios">Ver mis servicios</Link></p>
+    <ServicePage
     companyId={companyId}
     comunas={comunas}
     error={error}
@@ -158,5 +161,6 @@ export default function CompanyPage() {
     setError={setError}
     setSuccessMsg={setSuccessMsg}
     successMsg={successMsg}
-  />;
+  />
+  </>;
 }

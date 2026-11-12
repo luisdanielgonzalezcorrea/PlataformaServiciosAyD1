@@ -69,6 +69,7 @@ export default function AgendaPage() {
   return (
     <div className="narrow">
       <h1>Mi agenda</h1>
+      <p className="small"><Link to="/bloqueos">Bloquear fechas</Link> · <Link to="/mis-servicios">Mis servicios</Link></p>
       <p className="muted">Define cuándo está disponible cada servicio y en qué horarios atiendes.</p>
 
       {error && (

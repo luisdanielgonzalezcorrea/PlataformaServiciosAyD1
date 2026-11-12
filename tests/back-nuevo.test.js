@@ -64,9 +64,11 @@ describe("Calendario mensual (HU-018 / HU-019)", () => {
       if (String(c.url).endsWith("/availability/month")) return { status: 404, data: "" };
       return { status: 200, data: [] };
     });
-    const res = await getMonthAvailability({ id: "svc-3" }, 2026, 9);
+    // Mes siguiente al actual: así la prueba no depende de la fecha en que se corra.
+    const next = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+    const res = await getMonthAvailability({ id: "svc-3" }, next.getFullYear(), next.getMonth());
     expect(urls[0]).toContain("/availability/month");
     expect(urls.some((u) => u.endsWith("/availability"))).toBe(true);
-    expect(Object.keys(res)).toHaveLength(31);
+    expect(Object.keys(res)).toHaveLength(new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate());
   });
 });

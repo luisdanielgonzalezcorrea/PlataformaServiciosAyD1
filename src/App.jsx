@@ -11,6 +11,19 @@ import ReservePage from "./pages/ReservePage";
 import ReservationConfirmedPage from "./pages/ReservationConfirmedPage";
 import MyReservationsPage from "./pages/MyReservationsPage";
 import AgendaPage from "./pages/AgendaPage";
+import MyServicesPage from "./pages/MyServicesPage";
+import EditServicePage from "./pages/EditServicePage";
+import ProviderReservationsPage from "./pages/ProviderReservationsPage";
+import ReportsPage from "./pages/ReportsPage";
+import BlockedDatesPage from "./pages/BlockedDatesPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import EditCompanyPage from "./pages/EditCompanyPage";
+import ReservationDetailPage from "./pages/ReservationDetailPage";
+import ClientContactPage from "./pages/ClientContactPage";
+import RecoverEmailPage from "./pages/RecoverEmailPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminProvidersPage from "./pages/AdminProvidersPage";
 
 export default function App() {
   return (
@@ -61,6 +74,27 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Sprint 3 · Recuperación de contraseña (HU-006) */}
+          <Route path="/olvide-contrasena" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Sprint 3 · Proveedor */}
+          <Route path="/negocio/editar" element={<ProtectedRoute><EditCompanyPage /></ProtectedRoute>} />
+          <Route path="/mis-servicios" element={<ProtectedRoute><MyServicesPage /></ProtectedRoute>} />
+          <Route path="/mis-servicios/:id/editar" element={<ProtectedRoute><EditServicePage /></ProtectedRoute>} />
+          <Route path="/reservas" element={<ProtectedRoute><ProviderReservationsPage /></ProtectedRoute>} />
+          <Route path="/reportes" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+          <Route path="/bloqueos" element={<ProtectedRoute><BlockedDatesPage /></ProtectedRoute>} />
+
+          {/* Sprint 3 · Cliente (030 a 034, 041, 045) */}
+          <Route path="/mis-reservas/:id" element={<ReservationDetailPage />} />
+          <Route path="/mis-datos" element={<ClientContactPage />} />
+          <Route path="/recuperar-correo" element={<RecoverEmailPage />} />
+
+          {/* Sprint 3 · Administración (042 a 044) */}
+          <Route path="/admin" element={<ProtectedRoute admin><AdminDashboardPage /></ProtectedRoute>} />
+          <Route path="/admin/proveedores" element={<ProtectedRoute admin><AdminProvidersPage /></ProtectedRoute>} />
         </Routes>
       </main>
     </div>

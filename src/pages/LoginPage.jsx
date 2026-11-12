@@ -21,8 +21,8 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
-      await login({ email, password });
-      navigate("/negocio");
+      const data = await login({ email, password });
+      navigate(data.isAdmin ? "/admin" : "/negocio");
     } catch (err) {
       // HU-004 · Inicio de sesión fallido
       setError(err.friendlyMessage || "Correo o contraseña incorrectos.");
@@ -62,6 +62,8 @@ export default function LoginPage() {
         <button className="btn btn--primary" type="submit" disabled={submitting}>
           {submitting ? "Ingresando..." : "Iniciar sesión"}
         </button>
+
+        <p className="muted center"><Link to="/olvide-contrasena">¿Olvidó su contraseña?</Link></p>
 
         <p className="muted center">
           ¿Aún no tienes cuenta? <Link to="/registro">Regístrate</Link>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { DAY_STATUS, getDaySlots, getMonthAvailability } from "../api/scheduleService";
+import { DAY_STATUS, clearAvailabilityCache, getDaySlots, getMonthAvailability } from "../api/scheduleService";
 import {
   MAX_NOTICE_DAYS, addDays, formatLongDate, formatTime, isoWeekday, monthName, todayISO,
 } from "../utils/dates";
@@ -10,6 +10,9 @@ const STATUS_LABEL = {
   [DAY_STATUS.FULL]: "Agotado",
   [DAY_STATUS.DISABLED]: "No habilitado",
 };
+
+// HU-037 · El calendario se vuelve a consultar solo, para reflejar reservas y cancelaciones sin recargar.
+export const AVAILABILITY_POLL_MS = 60000;
 
 const WEEK_HEADER = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -76,6 +79,17 @@ export default function AvailabilityPicker({
     },
     [service]
   );
+
+  // HU-037 · Actualización automática de la disponibilidad (solo con la pestaña visible)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      clearAvailabilityCache(service.id);
+      setMonthTick((t) => t + 1);
+      setDayTick((t) => t + 1);
+    }, AVAILABILITY_POLL_MS);
+    return () => clearInterval(timer);
+  }, [service.id]);
 
   // Carga el mes visible (y precarga el siguiente para saber si hay fechas próximas)
   useEffect(() => {

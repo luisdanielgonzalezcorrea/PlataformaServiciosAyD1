@@ -167,6 +167,68 @@ export async function listActiveReservations(documentNumber) {
 }
 
 /**
+ * HU-030 / HU-031 · Todas las reservas del cliente (activas, finalizadas y canceladas).
+ * GET /reservations/client/{documentNumber}  (sesión del cliente). Cada una trae `reservationCode`.
+ */
+export async function listAllReservations(documentNumber) {
+  let items;
+  if (USE_MOCKS) {
+    await wait(300);
+    if (!getClientSession()) throw apiError("AUTH_REQUIRED", "Tu sesión expiró.", 401);
+    items = reservations.filter((r) => r.clientDocumentNumber === documentNumber);
+  } else {
+    const { data } = await httpClient.get(`/reservations/client/${encodeURIComponent(documentNumber)}`, {
+      params: { size: 100, sort: "reservationDate,desc" },
+      clientAuth: true,
+    });
+    items = data.items || [];
+  }
+  return { status: 200, data: items.map((r) => ({ ...r, reservationCode: reservationCode(r) })) };
+}
+
+/** HU-032 · GET /reservations/{id}  (sesión del cliente) */
+export async function getReservation(id) {
+  if (USE_MOCKS) {
+    await wait(250);
+    if (!getClientSession()) throw apiError("AUTH_REQUIRED", "Tu sesión expiró.", 401);
+    const r = reservations.find((x) => x.id === id);
+    if (!r) throw apiError("RESERVATION_NOT_FOUND", "No encontramos una reserva con ese código.", 404);
+    return { status: 200, data: { ...r, reservationCode: reservationCode(r) } };
+  }
+  const { data } = await httpClient.get(`/reservations/${id}`, { clientAuth: true });
+  return { status: 200, data };
+}
+
+/**
+ * HU-033 · PUT /reservations/{id}  { reservation_date, start_time, end_time }  (sesión del cliente)
+ * El back libera el horario anterior y bloquea el nuevo. Errores: RESERVATION_NOT_ACTIVE,
+ * OUTSIDE_ATTENTION_HOURS, DATE_BLOCKED, END_TIME_MISMATCH, SLOT_NOT_AVAILABLE (409).
+ */
+export async function modifyReservation(id, { date, startTime, endTime }) {
+  if (USE_MOCKS) {
+    await wait(400);
+    const r = reservations.find((x) => x.id === id);
+    if (!r) throw apiError("RESERVATION_NOT_FOUND", "Reserva no encontrada.", 404);
+    if (!["PENDING", "CONFIRMED"].includes(r.status)) throw apiError("RESERVATION_NOT_ACTIVE", "La reserva ya no admite cambios.");
+    checkHorizon(date, startTime);
+    const svc = findMockServiceById(r.serviceId);
+    if (!mockSlots(svc, date).some((s) => s.startTime === startTime)) {
+      throw apiError("SLOT_NOT_AVAILABLE", "El horario seleccionado ya no está disponible.", 409);
+    }
+    clearAvailabilityCache(r.serviceId);
+    Object.assign(r, { reservationDate: date, startTime, endTime });
+    return { status: 200, data: { ...r, reservationCode: reservationCode(r) } };
+  }
+  const { data } = await httpClient.put(
+    `/reservations/${id}`,
+    { reservation_date: date, start_time: startTime, end_time: endTime },
+    { clientAuth: true }
+  );
+  clearAvailabilityCache(data.serviceId);
+  return { status: 200, data };
+}
+
+/**
  * PATCH /reservations/{id}/cancel  { cancellation_reason }  (sesión del cliente)
  * El back rechaza con CANCELLATION_TOO_LATE si faltan menos de 2 h.
  */

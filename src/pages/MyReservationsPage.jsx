@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { clearClientSession, closeClientSession, getClientSession } from "../api/reservationService";
-import ActiveReservations from "../components/ActiveReservations";
+import { Link } from "react-router-dom";
+import ClientReservations from "../components/ClientReservations";
 import ClientVerification from "../components/ClientVerification";
 
 /**
- * HU-026 · Consulta de reservas activas (fuera del flujo de reserva)
+ * HU-030 / HU-031 · Consulta de reservas del cliente (fuera del flujo de reserva)
  * Necesita la sesión corta del cliente (código por correo, dura 30 min).
  */
 export default function MyReservationsPage() {
@@ -34,19 +35,23 @@ export default function MyReservationsPage() {
       )}
 
       {!session ? (
+        <>
         <ClientVerification
           onVerified={(s) => {
             setExpired(false);
             setSession(s);
           }}
         />
+        <p className="muted small center">¿Ya no tienes acceso a ese correo? <Link to="/recuperar-correo">Recupéralo aquí</Link></p>
+        </>
       ) : (
         <>
           <p className="muted small">
             Sesión de {session.documentType} {session.documentNumber}.{" "}
             <button type="button" className="link-btn" onClick={logout}>Cerrar sesión</button>
           </p>
-          <ActiveReservations documentNumber={session.documentNumber} onSessionExpired={handleExpired} />
+          <ClientReservations documentNumber={session.documentNumber} onSessionExpired={handleExpired} />
+          <p className="muted small"><Link to="/mis-datos">Actualizar mi correo o teléfono</Link></p>
         </>
       )}
     </div>

@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { LogoMark } from "./Icons";
 
 export default function Header() {
-  const { isAuthenticated, provider, logout } = useAuth();
+  const { isAuthenticated, isAdmin, provider, logout } = useAuth();
   const navigate = useNavigate();
 
   async function handleLogout() {
@@ -23,12 +23,20 @@ export default function Header() {
       <nav className="header__actions">
         {isAuthenticated ? (
           <>
-            <Link to="/negocio" className="header__link">
-              Mi negocio
-            </Link>
-            <Link to="/agenda" className="header__link">
-              Mi agenda
-            </Link>
+            {isAdmin ? (
+              <>
+                <Link to="/admin" className="header__link">Panel</Link>
+                <Link to="/admin/proveedores" className="header__link">Proveedores</Link>
+              </>
+            ) : (
+              <>
+                <Link to="/negocio" className="header__link">Mi negocio</Link>
+                <Link to="/mis-servicios" className="header__link">Mis servicios</Link>
+                <Link to="/agenda" className="header__link">Mi agenda</Link>
+                <Link to="/reservas" className="header__link">Reservas</Link>
+                <Link to="/reportes" className="header__link">Reportes</Link>
+              </>
+            )}
             <span className="header__provider">{provider?.email}</span>
             <button className="btn btn--ghost" onClick={handleLogout}>
               Cerrar sesión
