@@ -109,7 +109,7 @@ body {
   background:
     radial-gradient(620px 360px at 88% 0%, rgba(201, 162, 75, 0.34), transparent 62%),
     radial-gradient(560px 420px at 4% 110%, rgba(201, 162, 75, 0.3), transparent 64%),
-    radial-gradient(700px 400px at 40% -20%, rgba(60, 170, 140, 0.45), transparent 60%),
+    radial-gradient(700px 400px at 40% -20%, rgba(154, 58, 95, 0.45), transparent 60%),
     var(--grad-selva);
   padding: 68px 20px 118px;
   box-shadow: 0 30px 60px -36px rgba(43, 10, 23, 0.7);
@@ -574,3 +574,40 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .ticket__top .seal__check { stroke: #2b0a17; }
 .ticket__top .confirmed__code { color: #2b0a17; }
 ::selection { background: #ebcf8a; color: #2b0a17; }
+
+/* ---------- Banner: calendario real del mes ---------- */
+.hero::after { background-image: none; }
+.hero-cal {
+  position: absolute;
+  z-index: 1;
+  right: max(20px, calc(50% - 540px));
+  top: 44px;
+  width: 270px;
+  padding: 14px 14px 12px;
+  border-radius: 16px;
+  background: var(--papel);
+  color: var(--tinta);
+  border-top: 3px solid var(--girasol);
+  box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.55);
+}
+.hero-cal strong {
+  display: block;
+  text-align: center;
+  margin-bottom: 8px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.98rem;
+}
+.hero-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  text-align: center;
+  font-size: 0.76rem;
+}
+.hero-cal__grid i { font-style: normal; color: var(--tinta-suave); padding-bottom: 3px; }
+.hero-cal__grid span { padding: 5px 0; border-radius: 50%; }
+.hero-cal__grid .is-past { color: #b9a99a; }
+.hero-cal__grid .is-free { background: var(--girasol); color: var(--selva-900); font-weight: 600; }
+.hero-cal__grid .is-today { background: var(--selva); color: #fff; font-weight: 600; }
+@media (max-width: 900px) { .hero-cal { display: none; } }

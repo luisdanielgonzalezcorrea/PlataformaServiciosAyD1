@@ -3,6 +3,35 @@ import { Link } from "react-router-dom";
 import { getServices, getComunas } from "../api/catalogService";
 import { ClockIcon } from "../components/Icons";
 
+/* Mini calendario decorativo del banner: mes actual, hoy resaltado y
+   algunos días próximos en dorado como "horarios disponibles". */
+function HeroCalendar() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const today = now.getDate();
+  const first = (new Date(y, m, 1).getDay() + 6) % 7; // lunes = 0
+  const days = new Date(y, m + 1, 0).getDate();
+  const mes = new Date(y, m, 1).toLocaleDateString("es-CO", { month: "long" });
+  const title = `${mes.charAt(0).toUpperCase()}${mes.slice(1)} ${y}`;
+  const free = new Set([1, 3, 5, 8, 10].map((n) => today + n));
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push(<span key={"e" + i} />);
+  for (let d = 1; d <= days; d++) {
+    const cls = d === today ? "is-today" : free.has(d) ? "is-free" : d < today ? "is-past" : "";
+    cells.push(<span key={d} className={cls}>{d}</span>);
+  }
+  return (
+    <div className="hero-cal" aria-hidden="true">
+      <strong>{title}</strong>
+      <div className="hero-cal__grid">
+        {["L", "M", "M", "J", "V", "S", "D"].map((l, i) => <i key={i}>{l}</i>)}
+        {cells}
+      </div>
+    </div>
+  );
+}
+
 export default function CatalogPage() {
   const [services, setServices] = useState([]);
   const [comunas, setComunas] = useState([]);
@@ -50,6 +79,7 @@ export default function CatalogPage() {
           <h1>Reserva el servicio que necesitas, a la hora que te quede bien</h1>
           <p>Encuentra servicios en tu comuna, mira los horarios libres y agenda en minutos.</p>
         </div>
+        <HeroCalendar />
       </section>
 
       {/* Filtros de búsqueda */}
