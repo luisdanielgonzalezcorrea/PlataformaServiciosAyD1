@@ -5,11 +5,18 @@ import { mockServices } from "../mocks/servicesMock";
 import { reservations as mockReservations } from "../mocks/mockDb";
 import { clearAvailabilityCache } from "./scheduleService";
 import { readRegistry, writeRegistry, serviceToBody, expandDateRange } from "../utils/sprint3";
-
+ 
+/** Solo mocks: servicios del negocio del proveedor, para que reservas y reportes no mezclen negocios ajenos. */
+async function mockMine() {
+  const { data: company } = await getMyCompany();
+  const mine = mockServices.filter((s) => s.companyId === company.id);
+  return { mine, ids: new Set(mine.map((s) => s.id)) };
+}
+ 
 /* ------------------------------------------------------------------------- */
 /* HU-010 / HU-012 · Mis servicios                                            */
 /* ------------------------------------------------------------------------- */
-
+ 
 /**
  * GET /services?companyId=… solo devuelve los ACTIVOS. Para no perder los que el proveedor
  * desactiva, guardamos sus ids en este navegador y los pedimos con GET /services/{id}
@@ -33,7 +40,7 @@ export async function listMyServices() {
   writeRegistry(company.id, [...active.map((s) => s.id), ...known]);
   return { status: 200, data: [...active, ...inactive], company };
 }
-
+ 
 /** HU-011 · PUT /services/{id} (campos editables) */
 export async function updateService(id, form) {
   const body = serviceToBody(form);
@@ -52,7 +59,7 @@ export async function updateService(id, form) {
   clearAvailabilityCache(id);
   return { status: 200, data };
 }
-
+ 
 /** HU-012 · PATCH /services/{id}/status { is_active } */
 export async function setServiceActive(id, isActive) {
   if (USE_MOCKS) {
@@ -66,11 +73,11 @@ export async function setServiceActive(id, isActive) {
   clearAvailabilityCache(id);
   return { status: 200, data };
 }
-
+ 
 /* ------------------------------------------------------------------------- */
 /* HU-035 / HU-036 · Reservas del proveedor                                   */
 /* ------------------------------------------------------------------------- */
-
+ 
 /**
  * GET /provider/reservations?status&service_id&from_date&to_date&page&size
  * -> { items, page, size, totalElements, totalPages }. Orden cronológico (más próximas primero).
@@ -78,7 +85,8 @@ export async function setServiceActive(id, isActive) {
 export async function listProviderReservations({ status, serviceId, fromDate, toDate, page = 0, size = 20 } = {}) {
   if (USE_MOCKS) {
     await wait(250);
-    let list = mockReservations.map((r) => ({
+    const { ids } = await mockMine();
+    let list = mockReservations.filter((r) => ids.has(r.serviceId)).map((r) => ({
       ...r, reservationCode: `RSV-${String(r.id).replace(/-/g, "").slice(0, 8).toUpperCase()}`,
     }));
     if (status) list = list.filter((r) => r.status === status);
@@ -97,11 +105,11 @@ export async function listProviderReservations({ status, serviceId, fromDate, to
   const { data } = await httpClient.get("/provider/reservations", { params });
   return { status: 200, data };
 }
-
+ 
 /* ------------------------------------------------------------------------- */
 /* HU-038 / HU-039 · Reportes                                                 */
 /* ------------------------------------------------------------------------- */
-
+ 
 function reportParams({ serviceId, fromDate, toDate } = {}) {
   const p = {};
   if (serviceId) p.service_id = serviceId;
@@ -109,13 +117,14 @@ function reportParams({ serviceId, fromDate, toDate } = {}) {
   if (toDate) p.to_date = toDate;
   return p;
 }
-
+ 
 /** GET /reports/reservations -> { total, byStatus: { CONFIRMED: n, ... } } */
 export async function getReservationsReport(filters = {}) {
   if (USE_MOCKS) {
     await wait(250);
+    const { ids } = await mockMine();
     const list = mockReservations.filter(
-      (r) => (!filters.serviceId || r.serviceId === filters.serviceId) &&
+      (r) => ids.has(r.serviceId) && (!filters.serviceId || r.serviceId === filters.serviceId) &&
         (!filters.fromDate || r.reservationDate >= filters.fromDate) &&
         (!filters.toDate || r.reservationDate <= filters.toDate)
     );
@@ -126,12 +135,13 @@ export async function getReservationsReport(filters = {}) {
   const { data } = await httpClient.get("/reports/reservations", { params: reportParams(filters) });
   return { status: 200, data };
 }
-
+ 
 /** GET /reports/occupancy -> { services: [{serviceId,name,booked,capacity,occupancyPercent}], overallPercent } */
 export async function getOccupancyReport(filters = {}) {
   if (USE_MOCKS) {
     await wait(250);
-    const services = mockServices.filter((s) => !filters.serviceId || s.id === filters.serviceId).map((s) => {
+    const { mine } = await mockMine();
+    const services = mine.filter((s) => s.isActive && (!filters.serviceId || s.id === filters.serviceId)).map((s) => {
       const booked = mockReservations.filter((r) => r.serviceId === s.id && r.status === "CONFIRMED").length;
       const capacity = Math.max(booked, 7);
       return { serviceId: s.id, name: s.name, booked, capacity, occupancyPercent: Math.round((booked / capacity) * 1000) / 10 };
@@ -143,12 +153,13 @@ export async function getOccupancyReport(filters = {}) {
   const { data } = await httpClient.get("/reports/occupancy", { params: reportParams(filters) });
   return { status: 200, data };
 }
-
+ 
 /** GET /reports/demand?order=DESC|ASC&limit -> [{serviceId, serviceName, reservations}] */
 export async function getDemandReport({ order = "DESC", limit = 10, ...filters } = {}) {
   if (USE_MOCKS) {
     await wait(250);
-    const rows = mockServices.map((s) => ({
+    const { mine } = await mockMine();
+    const rows = mine.filter((s) => !filters.serviceId || s.id === filters.serviceId).map((s) => ({
       serviceId: s.id, serviceName: s.name,
       reservations: mockReservations.filter((r) => r.serviceId === s.id && r.status !== "CANCELLED").length,
     }));
@@ -158,13 +169,13 @@ export async function getDemandReport({ order = "DESC", limit = 10, ...filters }
   const { data } = await httpClient.get("/reports/demand", { params: { ...reportParams(filters), order, limit } });
   return { status: 200, data };
 }
-
+ 
 /* ------------------------------------------------------------------------- */
 /* HU-017 · Bloqueo de fechas                                                 */
 /* ------------------------------------------------------------------------- */
-
+ 
 const mockBlocked = [];
-
+ 
 /**
  * POST /blocked-dates { company_id, service_id?, block_date, reason } — una fecha por llamada.
  * Para un rango se llama una vez por día. Devuelve { done: [fechas], failed: [{date, message}] }.
@@ -192,7 +203,7 @@ export async function blockDates({ companyId, serviceId, from, to, reason }) {
   if (serviceId) clearAvailabilityCache(serviceId);
   return { done, failed };
 }
-
+ 
 /**
  * HU-012 · Ejecuta el plan de `planDeactivation`:
  *  - now: PATCH /services/{id}/status { is_active: false }
