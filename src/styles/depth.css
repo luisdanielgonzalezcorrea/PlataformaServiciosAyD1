@@ -611,3 +611,22 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .hero-cal__grid .is-free { background: var(--girasol); color: var(--selva-900); font-weight: 600; }
 .hero-cal__grid .is-today { background: var(--selva); color: #fff; font-weight: 600; }
 @media (max-width: 900px) { .hero-cal { display: none; } }
+
+/* ---------- Mis reservas: tarjeta de datos de contacto ---------- */
+.contact-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+  margin: 14px 0 22px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fcf8ef, #f4e9cf);
+  border: 1px solid var(--linea);
+  border-left: 4px solid var(--girasol);
+  box-shadow: 0 10px 26px -18px rgba(43, 10, 23, 0.35);
+}
+.contact-card > div { display: grid; gap: 2px; max-width: 46ch; }
+.contact-card strong { font-family: var(--font-display); font-size: 1.05rem; color: var(--tinta); }
+.contact-card span { color: var(--tinta-suave); font-size: 0.92rem; }

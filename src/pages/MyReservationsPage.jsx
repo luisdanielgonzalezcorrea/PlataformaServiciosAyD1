@@ -50,8 +50,14 @@ export default function MyReservationsPage() {
             Sesión de {session.documentType} {session.documentNumber}.{" "}
             <button type="button" className="link-btn" onClick={logout}>Cerrar sesión</button>
           </p>
+          <div className="contact-card">
+            <div>
+              <strong>Tus datos de contacto</strong>
+              <span>Aquí te llegan los códigos y confirmaciones. Mantén tu correo y teléfono al día.</span>
+            </div>
+            <Link to="/mis-datos" className="btn btn--primary">Actualizar correo y teléfono</Link>
+          </div>
           <ClientReservations documentNumber={session.documentNumber} onSessionExpired={handleExpired} />
-          <p className="muted small"><Link to="/mis-datos">Actualizar mi correo o teléfono</Link></p>
         </>
       )}
     </div>
