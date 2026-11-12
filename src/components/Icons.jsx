@@ -1,26 +1,31 @@
+import { useId } from "react";
 // Íconos sencillos en SVG (reemplazan los emojis). Solo presentación.
 export function LogoMark({ size = 32 }) {
-  // Cuadrícula de calendario: un día "reservado" en girasol.
-  const dots = [];
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 3; c++) {
-      const booked = r === 1 && c === 2;
-      dots.push(
-        <circle
-          key={`${r}${c}`}
-          cx={9 + c * 7}
-          cy={9 + r * 7}
-          r={booked ? 2.6 : 2}
-          fill={booked ? "#FFC53D" : "#FFFFFF"}
-          opacity={booked ? 1 : 0.85}
-        />
-      );
-    }
-  }
+  // Sello del calendario: página marfil con banda dorada y visto, sobre vino tinto.
+  const id = useId();
   return (
-    <svg width={size} height={size} viewBox="0 0 30 30" aria-hidden="true" focusable="false">
-      <rect width="30" height="30" rx="9" fill="#0E4D3F" />
-      {dots}
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id={`${id}-g`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#5C1A33" />
+          <stop offset="1" stopColor="#2B0A17" />
+        </linearGradient>
+        <linearGradient id={`${id}-a`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#EBCF8A" />
+          <stop offset="1" stopColor="#B98A2F" />
+        </linearGradient>
+        <clipPath id={`${id}-c`}>
+          <rect x="9" y="9" width="22" height="24" rx="4.5" />
+        </clipPath>
+      </defs>
+      <rect width="40" height="40" rx="12" fill={`url(#${id}-g)`} />
+      <rect x="9" y="9" width="22" height="24" rx="4.5" fill="#F6EFDF" />
+      <g clipPath={`url(#${id}-c)`}>
+        <rect x="9" y="9" width="22" height="7.2" fill={`url(#${id}-a)`} />
+      </g>
+      <rect x="14" y="6" width="2.6" height="6" rx="1.3" fill="#F6EFDF" stroke="#2B0A17" strokeWidth="1" />
+      <rect x="23.4" y="6" width="2.6" height="6" rx="1.3" fill="#F6EFDF" stroke="#2B0A17" strokeWidth="1" />
+      <path d="M14.3 24.2l4 4 7.6-8.2" fill="none" stroke="#5C1A33" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
