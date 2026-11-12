@@ -29,7 +29,18 @@ export default function MyReservationsPage() {
 
   return (
     <div className="narrow">
-      <h1>Mis reservas</h1>
+      <header className="page-hero page-hero--row">
+        <h1>Mis reservas</h1>
+        {session && (
+          <div className="session-chip">
+            <span className="session-chip__who">
+              <small>Sesión activa</small>
+              <strong>{session.documentType} {session.documentNumber}</strong>
+            </span>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={logout}>Cerrar sesión</button>
+          </div>
+        )}
+      </header>
       {expired && (
         <div className="alert alert--info">Tu sesión expiró. Valida tu documento otra vez para continuar.</div>
       )}
@@ -46,10 +57,6 @@ export default function MyReservationsPage() {
         </>
       ) : (
         <>
-          <p className="muted small">
-            Sesión de {session.documentType} {session.documentNumber}.{" "}
-            <button type="button" className="link-btn" onClick={logout}>Cerrar sesión</button>
-          </p>
           <div className="contact-card">
             <div>
               <strong>Tus datos de contacto</strong>
