@@ -331,3 +331,154 @@ body {
 .detail__head .detail__price {
   font-size: 1.7rem;
 }
+
+/* ==========================================================================
+   Capa 3 · portal del proveedor (Sprint 3)
+   ========================================================================== */
+
+/* ---------- Navegación con estado activo ---------- */
+.header__link { display: inline-flex; align-items: center; gap: 6px; }
+.header__link--on {
+  background: var(--selva);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 6px 14px -8px rgba(14, 77, 63, 0.7);
+}
+.header__link--on:hover { background: var(--selva-700); color: #fff; }
+
+/* ---------- Encabezado de página ---------- */
+.page-hero { margin: 4px 0 22px; }
+.page-hero h1 { margin-bottom: 6px; }
+.page-hero p { color: var(--tinta-suave); margin: 0; font-size: 1.05rem; }
+.page-hero--row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
+.page-wide > .card, .page-wide > .panel { margin-top: 20px; }
+
+/* ---------- Mi negocio ---------- */
+.biz-hero {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 22px;
+  padding: 26px 30px;
+  margin: 0 auto 28px;
+  max-width: 920px;
+  border-radius: 26px;
+  color: #fff;
+  background:
+    radial-gradient(360px 200px at 100% 0%, rgba(255, 197, 61, 0.32), transparent 65%),
+    var(--grad-selva);
+  box-shadow: var(--sombra-alta);
+  overflow: hidden;
+}
+.biz-hero__mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  color: var(--selva-900);
+  background: var(--grad-girasol);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 8px 18px -8px rgba(0, 0, 0, 0.5);
+}
+.biz-hero__info { flex: 1 1 240px; min-width: 0; }
+.biz-hero h1 { color: #fff; margin: 0 0 4px; font-size: clamp(1.5rem, 1.1rem + 1.4vw, 2.1rem); }
+.biz-hero p { margin: 0; color: rgba(255, 255, 255, 0.82); }
+.biz-hero__cta {
+  background: var(--grad-girasol);
+  color: var(--selva-900);
+  border-color: #e6ac1f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 10px 20px -10px rgba(0, 0, 0, 0.55);
+}
+.biz-hero__cta:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffdc82 0%, #ffcb4d 100%);
+  color: var(--selva-900);
+}
+
+/* ---------- Servicios como tarjetas (Mi agenda) ---------- */
+.pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin: 6px 0 8px; }
+.pick-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+  padding: 18px 18px 16px;
+  font: inherit;
+  color: var(--tinta);
+  cursor: pointer;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+  border: 1.5px solid rgba(14, 77, 63, 0.12);
+  border-radius: 20px;
+  box-shadow: var(--sombra-sm);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pick-card:hover { transform: translateY(-2px); border-color: var(--selva); box-shadow: var(--sombra-card); }
+.pick-card--on { border-color: var(--selva); background: linear-gradient(180deg, #f2faf6, #e7f4ed); box-shadow: 0 0 0 3px rgba(14, 77, 63, 0.14), var(--sombra-card); }
+.pick-card__name { font-family: var(--font-display); font-weight: 650; font-size: 1.12rem; line-height: 1.2; }
+.pick-card__meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.pick-card__go { margin-top: auto; font-size: 0.86rem; font-weight: 600; color: var(--selva); }
+.pick-card--on .pick-card__go { color: var(--cattleya); }
+
+/* ---------- Bloqueo de fechas ---------- */
+.block-card { border-top: 4px solid var(--cattleya); }
+.block-card__body { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 28px; align-items: start; margin: 16px 0; }
+.block-card__side { display: grid; gap: 14px; }
+.block-summary {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--niebla);
+  border: 1px dashed var(--linea);
+  min-height: 72px;
+  align-content: center;
+}
+.block-summary strong { font-family: var(--font-display); font-size: 1.3rem; color: var(--selva); }
+.seg { display: inline-flex; padding: 4px; gap: 4px; background: var(--niebla); border: 1px solid var(--linea); border-radius: 999px; flex-wrap: wrap; }
+.seg__opt { border: 0; background: transparent; padding: 8px 16px; border-radius: 999px; font: inherit; font-weight: 600; font-size: 0.92rem; color: var(--tinta-suave); cursor: pointer; }
+.seg__opt--on { background: var(--selva); color: #fff; box-shadow: 0 6px 14px -8px rgba(14, 77, 63, 0.8); }
+
+.rcal { padding: 14px; background: #fff; border: 1px solid var(--linea); border-radius: 20px; box-shadow: var(--sombra-sm); }
+.rcal__nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-family: var(--font-display); }
+.rcal__arrow { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--linea); background: #fff; font-size: 1.2rem; line-height: 1; cursor: pointer; color: var(--tinta); }
+.rcal__arrow:hover:not(:disabled) { border-color: var(--selva); color: var(--selva); }
+.rcal__arrow:disabled { opacity: 0.35; cursor: not-allowed; }
+.rcal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px 0; }
+.rcal__grid--head { margin-bottom: 4px; text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--tinta-suave); }
+.rcal__day { height: 40px; border: 0; background: transparent; font: inherit; font-size: 0.92rem; cursor: pointer; color: var(--tinta); border-radius: 12px; }
+.rcal__day:not(.is-in):hover:not(:disabled) { background: var(--ok-bg); }
+.rcal__day:disabled { color: #b4c2ba; cursor: not-allowed; }
+.rcal__day.is-today { box-shadow: inset 0 0 0 1.5px var(--girasol); }
+.rcal__day.is-in { background: var(--ok-bg); color: var(--ok-ink); border-radius: 0; font-weight: 600; }
+.rcal__day.is-edge { background: var(--selva); color: #fff; border-radius: 12px; }
+.rcal__day.is-blocked { background: repeating-linear-gradient(135deg, #f6dede 0 5px, #fbeaea 5px 10px); color: var(--full-ink); text-decoration: line-through; }
+.rcal__legend { display: flex; gap: 16px; list-style: none; margin: 10px 0 0; padding: 0; font-size: 0.8rem; color: var(--tinta-suave); }
+.rcal__dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; }
+.rcal__dot--in { background: var(--selva); }
+.rcal__dot--blocked { background: #f1c5c7; }
+
+/* ---------- Diálogo de desactivación ---------- */
+.modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(7, 42, 34, 0.5); backdrop-filter: blur(3px); }
+.modal__box { width: min(520px, 100%); max-height: 92vh; overflow: auto; padding: 28px; background: #fff; border-radius: 26px; box-shadow: var(--sombra-alta); }
+.choice-list { display: grid; gap: 10px; margin: 14px 0; }
+.choice { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1.5px solid var(--linea); border-radius: 16px; cursor: pointer; }
+.choice input { margin-top: 4px; accent-color: var(--selva); }
+.choice small { display: block; color: var(--tinta-suave); }
+.choice--on { border-color: var(--selva); background: #f2faf6; }
+
+/* ---------- Tablas y métricas más cuidadas ---------- */
+.table tbody tr:hover { background: #f6faf7; }
+.table th { background: #f4f8f5; text-transform: none; }
+.stat-card { box-shadow: var(--sombra-card); transition: transform 0.15s ease; }
+a.stat-card:hover { transform: translateY(-2px); }
+.toolbar { padding: 14px 16px; background: rgba(255, 255, 255, 0.7); border: 1px solid var(--linea-suave); border-radius: 20px; }
+
+@media (max-width: 760px) {
+  .block-card__body { grid-template-columns: 1fr; }
+  .header { padding: 10px 16px; }
+  .biz-hero { padding: 22px; }
+}

@@ -1,6 +1,6 @@
 import { httpClient, USE_MOCKS, wait, apiError } from "./httpClient";
 import { getMyCompany } from "./companyService";
-import { getServicesByCompany, getServiceById } from "./catalogService";
+import { getServicesByCompany, getServiceById, updateServiceRange } from "./catalogService";
 import { mockServices } from "../mocks/servicesMock";
 import { reservations as mockReservations } from "../mocks/mockDb";
 import { clearAvailabilityCache } from "./scheduleService";
@@ -191,4 +191,23 @@ export async function blockDates({ companyId, serviceId, from, to, reason }) {
   }
   if (serviceId) clearAvailabilityCache(serviceId);
   return { done, failed };
+}
+
+/**
+ * HU-012 · Ejecuta el plan de `planDeactivation`:
+ *  - now: PATCH /services/{id}/status { is_active: false }
+ *  - block: bloquea las fechas del servicio (sigue activo, pero no se reserva en ese lapso)
+ *  - until-further: cierra la vigencia el día anterior (PUT start_date/end_date)
+ */
+export async function deactivateService(service, plan, companyId) {
+  if (plan.type === "now") {
+    await setServiceActive(service.id, false);
+    return { kind: "now" };
+  }
+  if (plan.type === "block") {
+    const out = await blockDates({ companyId, serviceId: service.id, from: plan.from, to: plan.to, reason: "Servicio inactivo programado" });
+    return { kind: "block", ...out };
+  }
+  await updateServiceRange(service.id, { startDate: service.startDate || "", endDate: plan.endDate });
+  return { kind: "until-further", endDate: plan.endDate };
 }

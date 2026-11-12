@@ -6,6 +6,7 @@ import { getMyCompany, createCompany } from "../api/companyService"; // Importam
 
 export default function CompanyPage() {
   const [companyId, setCompanyId] = useState(null);
+  const [company, setCompany] = useState(null);
   const [comunas, setComunas] = useState([]);
   const [loadingCompany, setLoadingCompany] = useState(true);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
@@ -37,6 +38,7 @@ export default function CompanyPage() {
         const fetchedCompanyId = companyRes?.data?.id || companyRes?.id;
         if (fetchedCompanyId) {
           setCompanyId(fetchedCompanyId);
+          setCompany(companyRes?.data || null);
         }
       } catch (err) {
         console.error("Error al cargar datos iniciales:", err);
@@ -151,7 +153,17 @@ export default function CompanyPage() {
 
   // VISTA 2: SI YA TIENE EMPRESA CREADA
   return <>
-    <p className="center small"><Link to="/negocio/editar">Editar datos del negocio</Link> · <Link to="/mis-servicios">Ver mis servicios</Link></p>
+    <section className="biz-hero" aria-label="Mi negocio">
+      <span className="biz-hero__mark" aria-hidden="true">{(company?.name || "N").trim().charAt(0).toUpperCase()}</span>
+      <div className="biz-hero__info">
+        <h1>{company?.name || "Mi negocio"}</h1>
+        <p>{[company?.nit && `NIT ${company.nit}`, company?.address].filter(Boolean).join(" · ") || "Administra los datos de tu negocio."}</p>
+      </div>
+      <Link to="/negocio/editar" className="btn btn--primary biz-hero__cta">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Editar datos del negocio
+      </Link>
+    </section>
     <ServicePage
     companyId={companyId}
     comunas={comunas}

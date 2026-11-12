@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { getMyCompany } from "../api/companyService";
-import { getServiceById, getServicesByCompany, updateServiceRange } from "../api/catalogService";
+import { getServiceById, updateServiceRange } from "../api/catalogService";
+import { listMyServices } from "../api/providerService";
+import BlockDatesCard from "../components/BlockDatesCard";
 import { loadSchedule, saveSchedule } from "../api/scheduleService";
 import { WEEK_DAYS, formatTime, minutesToTime, timeToMinutes } from "../utils/dates";
 import { validateDateRange } from "../utils/validation";
@@ -17,6 +18,7 @@ export default function AgendaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [noCompany, setNoCompany] = useState(false);
+  const [company, setCompany] = useState(null);
 
   const selectedId = params.get("servicio");
 
@@ -24,17 +26,14 @@ export default function AgendaPage() {
     setLoading(true);
     setError(null);
     try {
-      const company = await getMyCompany().catch((err) => {
-        if (err.status === 404) return null;
-        throw err;
-      });
-      if (!company) {
+      const { data, company: mine } = await listMyServices();
+      setCompany(mine);
+      setServices(data);
+    } catch (err) {
+      if (err.status === 404) {
         setNoCompany(true);
         return;
       }
-      const { data } = await getServicesByCompany(company.data.id);
-      setServices(data);
-    } catch (err) {
       setError(err.friendlyMessage || "No pudimos cargar tus servicios.");
     } finally {
       setLoading(false);
@@ -67,10 +66,11 @@ export default function AgendaPage() {
   }
 
   return (
-    <div className="narrow">
-      <h1>Mi agenda</h1>
-      <p className="small"><Link to="/bloqueos">Bloquear fechas</Link> · <Link to="/mis-servicios">Mis servicios</Link></p>
-      <p className="muted">Define cuándo está disponible cada servicio y en qué horarios atiendes.</p>
+    <div className="page-wide">
+      <header className="page-hero">
+        <h1>Mi agenda</h1>
+        <p>Elige un servicio para definir cuándo lo atiendes y bloquear fechas.</p>
+      </header>
 
       {error && (
         <div className="alert alert--error">
@@ -84,21 +84,27 @@ export default function AgendaPage() {
           <Link className="btn btn--primary" to="/negocio">Crear servicio</Link>
         </div>
       ) : (
-        <label className="field">
-          <span>Servicio</span>
-          <select value={selectedId || ""} onChange={(e) => setParams(e.target.value ? { servicio: e.target.value } : {})}>
-            <option value="">Selecciona un servicio…</option>
-            {services.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </label>
+        <div className="pick-grid" role="list" aria-label="Tus servicios">
+          {services.map((s) => (
+            <button key={s.id} type="button" role="listitem" aria-pressed={selectedId === s.id}
+              className={`pick-card ${selectedId === s.id ? "pick-card--on" : ""}`}
+              onClick={() => setParams({ servicio: s.id })}>
+              <span className="pick-card__name">{s.name}</span>
+              <span className="pick-card__meta">
+                <span className={`tag tag--${s.modality === "VIRTUAL" ? "virtual" : "presencial"}`}>{s.modality === "VIRTUAL" ? "Virtual" : "Presencial"}</span>
+                {!s.isActive && <span className="badge badge--off">Inactivo</span>}
+              </span>
+              <span className="pick-card__go">{selectedId === s.id ? "Editando" : "Editar agenda"}</span>
+            </button>
+          ))}
+        </div>
       )}
 
       {service && (
         <>
           <RangeCard key={`r-${service.id}`} service={service} onSaved={setService} />
           <ScheduleCard key={`s-${service.id}`} service={service} />
+          {company && <BlockDatesCard key={`b-${service.id}`} service={service} company={company} />}
           <p className="small">
             <Link to={`/servicio/${service.id}`}>Ver cómo lo ve el cliente →</Link>
           </p>

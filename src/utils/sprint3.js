@@ -174,3 +174,47 @@ export function validateNewPassword(password, confirm) {
   if (password !== confirm) return "Las contraseñas no coinciden.";
   return null;
 }
+
+/* ---------- Calendario de selección (HU-017) ---------- */
+
+/** Celdas de un mes con semana de lunes a domingo; `null` son los huecos antes del día 1. */
+export function monthGrid(year, month) {
+  const first = new Date(year, month, 1);
+  const lead = (first.getDay() + 6) % 7;
+  const total = new Date(year, month + 1, 0).getDate();
+  const pad = (n) => String(n).padStart(2, "0");
+  const cells = Array.from({ length: lead }, () => null);
+  for (let d = 1; d <= total; d++) cells.push(`${year}-${pad(month + 1)}-${pad(d)}`);
+  return cells;
+}
+
+/** Un clic elige un día; un segundo clic cierra el rango; un tercero empieza de nuevo. */
+export function nextRangeClick({ from, to }, iso) {
+  if (!from || (from && to)) return { from: iso, to: null };
+  if (iso === from) return { from, to: null };
+  return iso < from ? { from: iso, to: from } : { from, to: iso };
+}
+
+export const inRange = (iso, from, to) => Boolean(from) && iso >= from && iso <= (to || from);
+
+/* ---------- HU-012 · Desactivar ahora o programado ---------- */
+/**
+ * mode "now": se desactiva de inmediato.
+ * mode "later": desde `from`, hasta `to` (opcional).
+ *  - con `to`: se bloquean esas fechas (máx. 31 días); el servicio sigue activo.
+ *  - sin `to`: se cierra la vigencia del servicio el día anterior a `from`.
+ */
+export function planDeactivation({ mode, from, to, startDate }) {
+  if (mode !== "later") return { plan: { type: "now" } };
+  if (!from) return { error: "Elige desde qué fecha se desactiva." };
+  if (from <= todayISO()) return { error: "La fecha de inicio debe ser posterior a hoy. Para hoy usa “Desactivar ahora”." };
+  if (to) {
+    if (to < from) return { error: "La fecha final no puede ser anterior a la inicial." };
+    const dates = expandDateRange(from, to);
+    if (dates.length > MAX_BLOCK_DAYS) return { error: `Con fecha de regreso puedes programar máximo ${MAX_BLOCK_DAYS} días. Para más tiempo, deja “hasta” vacío o desactívalo ahora.` };
+    return { plan: { type: "block", dates, from, to } };
+  }
+  const endDate = addDays(from, -1);
+  if (startDate && endDate < startDate) return { error: "Esa fecha es anterior al inicio de la vigencia del servicio." };
+  return { plan: { type: "until-further", endDate, from } };
+}

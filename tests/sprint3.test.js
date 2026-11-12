@@ -197,3 +197,41 @@ describe("HU-041 · contacto del cliente", () => {
     await expect(requestContactCode("otro@x.co")).rejects.toMatchObject({ status: 409 });
   });
 });
+
+import { inRange, monthGrid, nextRangeClick, planDeactivation } from "../src/utils/sprint3";
+
+describe("Revisiones · calendario de bloqueo y desactivación programada", () => {
+  it("arma el mes con semana de lunes a domingo", () => {
+    const cells = monthGrid(2026, 10); // noviembre 2026 empieza en domingo
+    expect(cells.slice(0, 6).every((c) => c === null)).toBe(true);
+    expect(cells[6]).toBe("2026-11-01");
+    expect(cells.filter(Boolean)).toHaveLength(30);
+  });
+  it("un clic elige un día, el segundo cierra el rango y el tercero reinicia", () => {
+    let r = nextRangeClick({ from: null, to: null }, "2026-12-10");
+    expect(r).toEqual({ from: "2026-12-10", to: null });
+    r = nextRangeClick(r, "2026-12-14");
+    expect(r).toEqual({ from: "2026-12-10", to: "2026-12-14" });
+    expect(inRange("2026-12-12", r.from, r.to)).toBe(true);
+    expect(nextRangeClick(r, "2026-12-20")).toEqual({ from: "2026-12-20", to: null });
+    expect(nextRangeClick({ from: "2026-12-10", to: null }, "2026-12-05")).toEqual({ from: "2026-12-05", to: "2026-12-10" });
+  });
+  it("desactivar ahora no pide fechas", () => {
+    expect(planDeactivation({ mode: "now" }).plan).toEqual({ type: "now" });
+  });
+  it("programar exige una fecha futura y valida el rango", () => {
+    expect(planDeactivation({ mode: "later" }).error).toMatch(/desde qué fecha/);
+    expect(planDeactivation({ mode: "later", from: todayISO() }).error).toMatch(/posterior a hoy/);
+    const from = addDays(todayISO(), 5);
+    expect(planDeactivation({ mode: "later", from, to: addDays(from, -1) }).error).toMatch(/anterior/);
+    expect(planDeactivation({ mode: "later", from, to: addDays(from, 60) }).error).toMatch(/máximo/);
+  });
+  it("con fecha de regreso bloquea fechas; sin ella cierra la vigencia el día anterior", () => {
+    const from = addDays(todayISO(), 5);
+    const withEnd = planDeactivation({ mode: "later", from, to: addDays(from, 2) }).plan;
+    expect(withEnd.type).toBe("block");
+    expect(withEnd.dates).toHaveLength(3);
+    expect(planDeactivation({ mode: "later", from }).plan).toEqual({ type: "until-further", endDate: addDays(from, -1), from });
+    expect(planDeactivation({ mode: "later", from, startDate: addDays(from, 3) }).error).toMatch(/vigencia/);
+  });
+});
