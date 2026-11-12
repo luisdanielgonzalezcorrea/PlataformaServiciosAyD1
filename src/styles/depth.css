@@ -607,7 +607,7 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 }
 .hero-cal__grid i { font-style: normal; color: var(--tinta-suave); padding-bottom: 3px; }
 .hero-cal__grid span { padding: 5px 0; border-radius: 50%; }
-.hero-cal__grid .is-past { color: #b9a99a; }
+.hero-cal__grid .is-past { color: #74645c; }
 .hero-cal__grid .is-free { background: var(--girasol); color: var(--selva-900); font-weight: 600; }
 .hero-cal__grid .is-today { background: var(--selva); color: #fff; font-weight: 600; }
 @media (max-width: 900px) { .hero-cal { display: none; } }
@@ -646,3 +646,31 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .session-chip__who small { color: var(--tinta-suave); font-size: 0.72rem; }
 .session-chip__who strong { font-size: 0.92rem; color: var(--tinta); }
 .session-chip .btn { padding: 8px 16px; font-size: 0.88rem; }
+
+/* Encabezado del detalle: lila claro (mismo tono del vino, más suave) con texto oscuro */
+.detail__head.card {
+  color: var(--tinta);
+  background:
+    radial-gradient(420px 240px at 100% 0%, rgba(209, 169, 78, 0.22), transparent 62%),
+    linear-gradient(135deg, #f3e8ef 0%, #e8d3df 100%);
+  border: 1px solid #d9bccb;
+  border-top: 3px solid var(--girasol);
+  box-shadow: 0 18px 40px -24px rgba(92, 26, 51, 0.45);
+}
+.detail__head.card h1,
+.detail__head.card .detail__price { color: var(--selva-700); }
+.detail__head.card .detail__duration,
+.detail__head.card .detail__meta,
+.detail__head.card strong { color: var(--tinta); }
+.detail__head.card .muted,
+.detail__head.card .small { color: #5a4650; }
+.detail__head.card .btn--primary {
+  background: var(--grad-selva-btn);
+  border-color: var(--selva-700);
+  color: #fff;
+  box-shadow: 0 12px 22px -12px rgba(43, 10, 23, 0.6);
+}
+.detail__head.card .btn--primary:hover:not(:disabled) {
+  background: var(--selva-700);
+  color: #fff;
+}

@@ -57,7 +57,7 @@
   --c-partial-bg: var(--girasol-bg);
   --c-full: var(--full-ink);
   --c-full-bg: var(--full-bg);
-  --c-disabled: #b3a79a;
+  --c-disabled: #7d6e64;
   --radius: var(--r-panel);
 
   font-family: var(--font-body);
@@ -886,7 +886,7 @@ a:hover {
 
 .day--disabled {
   background: transparent;
-  color: #b3a79a;
+  color: #7d6e64;
   font-weight: 500;
   cursor: not-allowed;
 }
