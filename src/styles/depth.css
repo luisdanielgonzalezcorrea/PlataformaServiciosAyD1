@@ -674,3 +674,16 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
   background: var(--selva-700);
   color: #fff;
 }
+
+/* Banner de login/registro: sello del logo en dorado tenue, y fondo degradado */
+.auth-page::before {
+  background-color: transparent;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170' viewBox='0 0 64 64' fill='none' stroke='%23d1a94e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='6' y='10' width='52' height='48' rx='10'/%3E%3Cpath d='M20 4v10M44 4v10M6 24h52'/%3E%3Cpath d='M21 41l8 8 15-16'/%3E%3C/svg%3E"),
+    radial-gradient(620px 300px at 85% 0%, rgba(209, 169, 78, 0.28), transparent 62%),
+    var(--grad-selva);
+  background-size: 170px 170px, auto, auto;
+  background-repeat: no-repeat;
+  background-position: right max(24px, calc(50vw - 520px)) top 28px, 0 0, 0 0;
+  opacity: 1;
+}
