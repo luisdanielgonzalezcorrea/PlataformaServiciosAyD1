@@ -687,3 +687,39 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
   background-position: right max(24px, calc(50vw - 520px)) top 28px, 0 0, 0 0;
   opacity: 1;
 }
+
+/* ---------- Móvil (iPhone): encabezado en dos filas y titulares más aireados ---------- */
+.hero h1 {
+  letter-spacing: -0.01em;
+  word-spacing: 0.08em;
+  font-variation-settings: "opsz" 72;
+}
+@media (max-width: 640px) {
+  .header {
+    flex-wrap: wrap;
+    row-gap: 8px;
+    padding: 10px 16px 8px;
+  }
+  .header__actions {
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .header__actions::-webkit-scrollbar { display: none; }
+  .header__actions > * { flex: 0 0 auto; white-space: nowrap; }
+  .header__provider { display: none; }
+  .hero { padding: 36px 20px 84px; }
+  .hero h1 { font-size: 2.1rem; max-width: 100%; }
+  .hero p { font-size: 1rem; }
+}
+@media (max-width: 640px) {
+  /* El sello grande queda cortado detrás de la tarjeta: más pequeño y arriba a la derecha */
+  .auth-page::before {
+    background-size: 56px 56px, auto, auto;
+    background-position: right 20px top 14px, 0 0, 0 0;
+  }
+}
