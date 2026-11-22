@@ -71,8 +71,8 @@ export default function EditCompanyPage() {
             <input value={form.address} onChange={(e) => set("address", e.target.value)} aria-invalid={!!errors.address} />{err("address")}</label>
           <label className="field field--full"><span>Enlace de redes sociales</span>
             <input value={form.social_media} onChange={(e) => set("social_media", e.target.value)} placeholder="https://instagram.com/mi-negocio" aria-invalid={!!errors.social_media} />{err("social_media")}</label>
-          <label className="field field--full"><span>Reemplazar logo (PNG, JPG o WEBP, máx. 2 MB)</span>
-            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => set("logo", e.target.files?.[0] || null)} />{err("logo")}</label>
+          <label className="field field--full"><span>Reemplazar logo (PNG o JPG, máx. 2 MB)</span>
+            <input type="file" accept="image/png,image/jpeg" onChange={(e) => set("logo", e.target.files?.[0] || null)} />{err("logo")}</label>
         </div>
         <div className="actions actions--between">
           <Link to="/negocio" className="btn btn--ghost">Volver</Link>

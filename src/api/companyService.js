@@ -4,13 +4,13 @@ function wait(ms = 500) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg"] /* el back (LogoStorage) solo acepta PNG y JPEG */;
 const MAX_LOGO_SIZE_MB = 2;
 
 export function validateLogoFile(file) {
   if (!file) return null; // el logo es opcional
   if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
-    return "Formato no permitido. Usa PNG, JPG o WEBP.";
+    return "Formato no permitido. Usa PNG o JPG.";
   }
   if (file.size > MAX_LOGO_SIZE_MB * 1024 * 1024) {
     return `El archivo supera el tamaño máximo permitido (${MAX_LOGO_SIZE_MB}MB).`;

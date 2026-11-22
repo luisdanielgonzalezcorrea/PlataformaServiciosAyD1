@@ -18,9 +18,8 @@ async function mockMine() {
 /* ------------------------------------------------------------------------- */
  
 /**
- * GET /services?companyId=… solo devuelve los ACTIVOS. Para no perder los que el proveedor
- * desactiva, guardamos sus ids en este navegador y los pedimos con GET /services/{id}
- * (ese sí responde también los inactivos). Ver PENDIENTES-BACK.md.
+ * GET /provider/services?companyId&page&size: servicios del proveedor autenticado, activos e inactivos.
+ * (Si el back es una versión anterior y no tiene ese endpoint, se usa el método de respaldo.)
  */
 export async function listMyServices() {
   const { data: company } = await getMyCompany();
@@ -28,6 +27,22 @@ export async function listMyServices() {
     await wait(250);
     return { status: 200, data: mockServices.filter((s) => s.companyId === company.id).map((s) => ({ ...s })), company };
   }
+  try {
+    const all = [];
+    for (let page = 0; page < 20; page++) {
+      const { data } = await httpClient.get("/provider/services", { params: { companyId: company.id, page, size: 100 } });
+      all.push(...(data.items || []));
+      if (page + 1 >= (data.totalPages || 1)) break;
+    }
+    return { status: 200, data: all, company };
+  } catch (err) {
+    if (![404, 405].includes(err.status ?? err.response?.status)) throw err;
+    return listMyServicesFallback(company);
+  }
+}
+
+/** Respaldo para un back sin /provider/services: activos + ids guardados en este navegador. */
+async function listMyServicesFallback(company) {
   const { data: active } = await getServicesByCompany(company.id);
   const known = readRegistry(company.id);
   const activeIds = new Set(active.map((s) => s.id));
@@ -175,11 +190,11 @@ export async function getDemandReport({ order = "DESC", limit = 10, ...filters }
 /* ------------------------------------------------------------------------- */
  
 const mockBlocked = [];
+let mockBlockedSeq = 1;
  
 /**
  * POST /blocked-dates { company_id, service_id?, block_date, reason } — una fecha por llamada.
  * Para un rango se llama una vez por día. Devuelve { done: [fechas], failed: [{date, message}] }.
- * El back no tiene GET ni DELETE de bloqueos (pendiente AyD2): "Desbloquear" no se puede hacer aún.
  */
 export async function blockDates({ companyId, serviceId, from, to, reason }) {
   const dates = expandDateRange(from, to);
@@ -189,7 +204,7 @@ export async function blockDates({ companyId, serviceId, from, to, reason }) {
     try {
       if (USE_MOCKS) {
         await wait(60);
-        mockBlocked.push({ companyId, serviceId: serviceId || null, date, reason });
+        mockBlocked.push({ id: `mb-${mockBlockedSeq++}`, companyId, serviceId: serviceId || null, blockDate: date, reason });
       } else {
         const body = { company_id: companyId, block_date: date, reason: reason || "Bloqueo del proveedor" };
         if (serviceId) body.service_id = serviceId;
@@ -204,6 +219,41 @@ export async function blockDates({ companyId, serviceId, from, to, reason }) {
   return { done, failed };
 }
  
+/**
+ * GET /blocked-dates?company_id&service_id&from_date&to_date -> [{ id, companyId, serviceId|null, blockDate, reason }]
+ * Con service_id solo trae los bloqueos de ese servicio (no los de todo el negocio).
+ */
+export async function listBlockedDates({ companyId, serviceId, fromDate, toDate } = {}) {
+  if (USE_MOCKS) {
+    await wait(150);
+    const list = mockBlocked.filter((b) => (!companyId || b.companyId === companyId)
+      && (!serviceId || b.serviceId === serviceId) && (!fromDate || b.blockDate >= fromDate) && (!toDate || b.blockDate <= toDate));
+    return { status: 200, data: [...list].sort((a, b) => a.blockDate.localeCompare(b.blockDate)) };
+  }
+  const params = {};
+  if (companyId) params.company_id = companyId;
+  if (serviceId) params.service_id = serviceId;
+  if (fromDate) params.from_date = fromDate;
+  if (toDate) params.to_date = toDate;
+  const { data } = await httpClient.get("/blocked-dates", { params });
+  return { status: 200, data };
+}
+
+/** DELETE /blocked-dates/{id}: quita un bloqueo y devuelve el que se quitó. */
+export async function unblockDate(id, serviceId) {
+  if (USE_MOCKS) {
+    await wait(120);
+    const i = mockBlocked.findIndex((b) => b.id === id);
+    if (i < 0) throw apiError("BLOCKED_DATE_NOT_FOUND", "Ese bloqueo ya no existe.", 404);
+    const [gone] = mockBlocked.splice(i, 1);
+    if (serviceId) clearAvailabilityCache(serviceId);
+    return { status: 200, data: gone };
+  }
+  const { data } = await httpClient.delete(`/blocked-dates/${id}`);
+  if (serviceId) clearAvailabilityCache(serviceId);
+  return { status: 200, data };
+}
+
 /**
  * HU-012 · Ejecuta el plan de `planDeactivation`:
  *  - now: PATCH /services/{id}/status { is_active: false }

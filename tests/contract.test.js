@@ -8,6 +8,8 @@ import * as company from "../src/api/companyService";
 import * as catalog from "../src/api/catalogService";
 import * as schedule from "../src/api/scheduleService";
 import * as booking from "../src/api/reservationService";
+import * as provider from "../src/api/providerService";
+import * as account from "../src/api/accountService";
 
 const SVC = "8f14e45f-ea5b-4b1c-9d3a-2c7f6b0a1e93";
 
@@ -170,6 +172,71 @@ describe("Épica 4 · Reserva (HU-021 a HU-029)", () => {
   it("HU-026 PATCH /reservations/{id}/cancel { cancellation_reason }", async () => {
     await booking.cancelReservation(SVC, "No puedo asistir");
     expectNoContractProblems();
+  });
+});
+
+describe("Sprint 3 · contrato completo (proveedor, cliente y admin)", () => {
+  const ok = () => expectNoContractProblems();
+  const sess = () => localStorage.setItem("servas_my_services_c1", "[]");
+  beforeEach(sess);
+
+  it("HU-004 el login lee { token, userId, email, role }", async () => {
+    const out = await auth.login({ email: "a@b.co", password: "Clave1234*" });
+    ok();
+    expect(out.data).toHaveProperty("role");
+  });
+  it("HU-006 recuperar contraseña (forgot + reset)", async () => {
+    await account.forgotPassword("a@b.co");
+    await account.resetPassword("token-123", "NuevaClave123*");
+    ok();
+  });
+  it("HU-010/011/012 mis servicios, editar y activar/desactivar", async () => {
+    await provider.listMyServices();
+    await provider.updateService(SVC, { name: "Yoga", cost: "50000", description: "d", modality: "VIRTUAL", durationMinutes: 60, capacity: 1 });
+    await provider.setServiceActive(SVC, false);
+    ok();
+    expect(calls.some((c) => c.key === "GET /provider/services")).toBe(true);
+  });
+  it("HU-017 bloquear, listar y quitar fechas", async () => {
+    await provider.blockDates({ companyId: SVC, serviceId: SVC, from: "2099-01-05", to: "2099-01-06", reason: "x" });
+    await provider.listBlockedDates({ companyId: SVC, serviceId: SVC, fromDate: "2099-01-01", toDate: "2099-01-31" });
+    await provider.unblockDate(SVC, SVC);
+    ok();
+  });
+  it("HU-035/036 reservas del proveedor", async () => {
+    await provider.listProviderReservations({ status: "CONFIRMED", serviceId: SVC, fromDate: "2099-01-01", toDate: "2099-01-31" });
+    ok();
+  });
+  it("HU-038/039/040 reportes", async () => {
+    const f = { serviceId: SVC, fromDate: "2099-01-01", toDate: "2099-01-31" };
+    await provider.getReservationsReport(f);
+    await provider.getOccupancyReport(f);
+    await provider.getDemandReport({ ...f, order: "ASC", limit: 5 });
+    ok();
+  });
+  it("HU-031/032/033/034 reservas del cliente (listar todas, detalle, modificar)", async () => {
+    await booking.listAllReservations("1234567890");
+    await booking.getReservation(SVC);
+    await booking.modifyReservation(SVC, { date: "2099-01-05", startTime: "09:00", endTime: "10:00" });
+    ok();
+  });
+  it("HU-041 cambio de contacto del cliente (código + actualización)", async () => {
+    await account.requestContactCode("nuevo@correo.co");
+    await account.updateClientContact({ firstName: "Ana", lastName: "Pérez", phone: "3001234567", email: "nuevo@correo.co", verificationCode: "123456" });
+    ok();
+  });
+  it("HU-045 recuperar correo perdido", async () => {
+    const p = { documentType: "CC", documentNumber: "1234567890", firstName: "Ana", phone: "3001234567", reservationCode: "RSV-1A2B3C4D", newEmail: "n@c.co" };
+    await account.requestEmailRecovery(p);
+    await account.confirmEmailRecovery({ ...p, otpCode: "123456" });
+    ok();
+  });
+  it("HU-042/043/044 administrador", async () => {
+    await account.getAdminOverview();
+    await account.listAdminProviders({ page: 0, size: 20 });
+    await account.adminResetProviderPassword(SVC);
+    await account.adminUpdateProviderContact(SVC, { email: "n@c.co", phone: "+573001234567", justification: "Correo mal escrito" });
+    ok();
   });
 });
 

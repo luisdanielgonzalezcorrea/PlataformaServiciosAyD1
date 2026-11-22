@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { httpClient } from "../src/api/httpClient";
 import {
-  blockDates, getOccupancyReport, listMyServices, listProviderReservations, setServiceActive, updateService,
+  blockDates, getOccupancyReport, listBlockedDates, listMyServices, unblockDate, listProviderReservations, setServiceActive, updateService,
 } from "../src/api/providerService";
 import { forgotPassword, requestContactCode, resetPassword, updateClientContact } from "../src/api/accountService";
 import { listAllReservations, modifyReservation } from "../src/api/reservationService";
@@ -50,9 +50,20 @@ describe("HU-012 · activar y desactivar (el back no lista inactivos)", () => {
     await setServiceActive("s1", false);
     expect(calls[0]).toMatchObject({ method: "patch", url: "/services/s1/status", data: { is_active: false } });
   });
-  it("sigue mostrando un servicio desactivado usando el registro local", async () => {
+  it("lista activos e inactivos con GET /provider/services", async () => {
     answerWith((c) => {
       if (c.url === "/companies") return { status: 200, data: [{ id: "c1" }] };
+      if (c.url === "/provider/services") return { status: 200, data: { items: [svc("a"), svc("b", { isActive: false })], page: 0, size: 100, totalElements: 2, totalPages: 1 } };
+      return { status: 404, data: { code: "NOT_FOUND", message: "x" } };
+    });
+    const { data } = await listMyServices();
+    expect(data.map((s) => [s.id, s.isActive])).toEqual([["a", true], ["b", false]]);
+    expect(calls.find((c) => c.url === "/provider/services").params).toMatchObject({ companyId: "c1", size: 100 });
+  });
+  it("si el back no tiene /provider/services, usa el registro local como respaldo", async () => {
+    answerWith((c) => {
+      if (c.url === "/companies") return { status: 200, data: [{ id: "c1" }] };
+      if (c.url === "/provider/services") return { status: 404, data: { code: "NOT_FOUND", message: "x" } };
       if (c.url === "/services") return { status: 200, data: { items: [svc("a")], page: 0, size: 100, totalElements: 1, totalPages: 1 } };
       return { status: 200, data: svc("b", { isActive: false }) };
     });
@@ -62,6 +73,19 @@ describe("HU-012 · activar y desactivar (el back no lista inactivos)", () => {
   });
 });
 
+describe("HU-017 · listar y quitar bloqueos", () => {
+  it("GET /blocked-dates con filtros en snake_case", async () => {
+    answerWith(() => ({ status: 200, data: [{ id: "x1", blockDate: "2026-12-01", serviceId: null, reason: "r" }] }));
+    const { data } = await listBlockedDates({ companyId: "c1", serviceId: "s1" });
+    expect(calls[0]).toMatchObject({ method: "get", url: "/blocked-dates", params: { company_id: "c1", service_id: "s1" } });
+    expect(data[0].blockDate).toBe("2026-12-01");
+  });
+  it("DELETE /blocked-dates/{id}", async () => {
+    answerWith(() => ({ status: 200, data: { id: "x1" } }));
+    await unblockDate("x1", "s1");
+    expect(calls[0]).toMatchObject({ method: "delete", url: "/blocked-dates/x1" });
+  });
+});
 describe("HU-011 · editar servicio", () => {
   const ok = { name: "Yoga", cost: "50000", description: "d", modality: "VIRTUAL", durationMinutes: 60, capacity: 1 };
   it("valida los obligatorios", () => {

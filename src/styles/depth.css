@@ -723,3 +723,10 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
     background-position: right 20px top 14px, 0 0, 0 0;
   }
 }
+
+/* ---------- Bloqueos vigentes ---------- */
+.block-list { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--linea); }
+.block-list h3 { font-size: 1rem; margin: 0 0 8px; }
+.block-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.block-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--linea); border-radius: 12px; background: var(--papel); }
+.block-list small { font-size: 0.82rem; }

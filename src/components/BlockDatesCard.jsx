@@ -1,16 +1,12 @@
 import { useEffect, useState } from "react";
-import { blockDates, listProviderReservations } from "../api/providerService";
+import { blockDates, listBlockedDates, listProviderReservations, unblockDate } from "../api/providerService";
 import DateRangeCalendar from "./DateRangeCalendar";
 import { formatLongDate } from "../utils/dates";
 import { conflictsFor, expandDateRange, validateBlockRange } from "../utils/sprint3";
 
-const KEY = (scope) => `servas_blocked_${scope}`;
-const readMarked = (scope) => { try { return JSON.parse(localStorage.getItem(KEY(scope)) || "[]"); } catch { return []; } };
-const writeMarked = (scope, list) => { try { localStorage.setItem(KEY(scope), JSON.stringify([...new Set(list)])); } catch { /* nada */ } };
-
 /**
  * HU-017 · Bloquear fechas desde el calendario: un día o varios seguidos, para un servicio o todo el negocio.
- * Avisa si hay reservas activas en esas fechas. Quitar bloqueos aún no se puede (el back no tiene DELETE).
+ * Avisa si hay reservas activas en esas fechas. Los bloqueos vigentes se listan y se pueden quitar.
  */
 export default function BlockDatesCard({ service, company }) {
   const [scope, setScope] = useState("service"); // service | company
@@ -20,10 +16,27 @@ export default function BlockDatesCard({ service, company }) {
   const [conflicts, setConflicts] = useState(null);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
-  const [marked, setMarked] = useState([]);
+  const [blocks, setBlocks] = useState([]);
+  const [removing, setRemoving] = useState(null);
 
   const scopeKey = scope === "company" ? `c_${company?.id}` : `s_${service.id}`;
-  useEffect(() => { setMarked(readMarked(scopeKey)); setRange({ from: null, to: null }); setResult(null); setConflicts(null); }, [scopeKey]);
+
+  async function loadBlocks() {
+    try {
+      const { data } = await listBlockedDates({ companyId: company.id, serviceId: scope === "service" ? service.id : undefined });
+      // "Todo mi negocio" = bloqueos sin servicio; el back los trae junto con los de cada servicio.
+      setBlocks(scope === "company" ? data.filter((b) => !b.serviceId) : data);
+    } catch { setBlocks([]); }
+  }
+  useEffect(() => { setRange({ from: null, to: null }); setResult(null); setConflicts(null); setBlocks([]); loadBlocks(); }, [scopeKey]);
+  const marked = blocks.map((b) => b.blockDate);
+
+  async function remove(b) {
+    setRemoving(b.id); setError(null);
+    try { await unblockDate(b.id, b.serviceId || service.id); await loadBlocks(); }
+    catch (err) { setError(err.friendlyMessage || "No pudimos quitar el bloqueo."); }
+    finally { setRemoving(null); }
+  }
 
   const count = range.from ? expandDateRange(range.from, range.to).length : 0;
   const pick = (r) => { setRange(r); setError(null); setConflicts(null); setResult(null); };
@@ -50,7 +63,7 @@ export default function BlockDatesCard({ service, company }) {
       companyId: company.id, serviceId: scope === "service" ? service.id : undefined,
       from: range.from, to: range.to, reason,
     });
-    if (out.done.length) { const all = [...marked, ...out.done]; writeMarked(scopeKey, all); setMarked(all); }
+    if (out.done.length) await loadBlocks();
     setResult(out); setConflicts(null); setRange({ from: null, to: null }); setBusy(false);
   }
 
@@ -104,7 +117,21 @@ export default function BlockDatesCard({ service, company }) {
           {result.failed.map((f) => <p key={f.date}>{formatLongDate(f.date)}: {f.message}</p>)}
         </div>
       )}
-      <p className="muted small">Por ahora el sistema no permite quitar un bloqueo desde aquí. Si te equivocas, avisa a soporte.</p>
+      <div className="block-list">
+        <h3>{scope === "company" ? "Fechas bloqueadas en todo tu negocio" : "Fechas bloqueadas en este servicio"}</h3>
+        {blocks.length === 0 ? <p className="muted small">No hay fechas bloqueadas.</p> : (
+          <ul>
+            {blocks.map((b) => (
+              <li key={b.id}>
+                <span><strong>{formatLongDate(b.blockDate)}</strong>{b.reason ? <small className="muted"> · {b.reason}</small> : null}</span>
+                <button type="button" className="btn btn--ghost" disabled={removing === b.id} onClick={() => remove(b)}>
+                  {removing === b.id ? "Quitando…" : "Quitar bloqueo"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

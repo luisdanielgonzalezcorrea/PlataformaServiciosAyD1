@@ -36,8 +36,8 @@ export function AuthProvider({ children }) {
       const { data } = await loginRequest(credentials);
       // El token debe estar guardado antes de preguntar el rol (el interceptor lo lee de localStorage).
       localStorage.setItem(TOKEN_KEY, data.token);
-      // HU-042: el login no informa el rol; se detecta probando /admin/overview.
-      const admin = await checkIsAdmin();
+      // HU-042: el login informa el rol (PROVIDER|ADMIN). Si un back anterior no lo envía, se prueba /admin/overview.
+      const admin = data.role ? data.role === "ADMIN" : await checkIsAdmin();
       localStorage.setItem(ADMIN_KEY, admin ? "1" : "0");
       setIsAdmin(admin);
       setToken(data.token);

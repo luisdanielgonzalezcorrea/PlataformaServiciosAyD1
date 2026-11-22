@@ -117,15 +117,15 @@ export async function login({ email, password }) {
     const fakeToken = `mock.${btoa(email)}.token`;
     return {
       status: 200,
-      data: { token: fakeToken, provider: { email, first_name: "Proveedor" } },
+      data: { token: fakeToken, role: "PROVIDER", provider: { email, first_name: "Proveedor" } },
     };
   }
 
-  // El back responde { token, userId, email }; el resto del front espera { token, provider }.
+  // El back responde { token, userId, email, role: PROVIDER|ADMIN }; el resto del front espera { token, role, provider }.
   const { data } = await httpClient.post("/auth/login", { email, password });
   return {
     status: 200,
-    data: { token: data.token, provider: { id: data.userId, email: data.email } },
+    data: { token: data.token, role: data.role, provider: { id: data.userId, email: data.email } },
   };
 }
 
