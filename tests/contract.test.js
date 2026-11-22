@@ -39,8 +39,8 @@ describe("Los mocks están apagados (se prueba contra el contrato, no contra dat
 describe("Épica 1 · Autenticación (snake_case en los cuerpos)", () => {
   it("POST /auth/register", async () => {
     await auth.registerProvider({
-      email: "a@b.co", password: "Clave1234*", document_type: "CC", document_number: "123456789",
-      first_name: "Ana", last_name: "Pérez", phone: "3001234567",
+      email: "a@b.co", password: "Clave1234*", documentType: "CC", documentNumber: "123456789",
+      firstName: "Ana", lastName: "Pérez", phone: "3001234567",
     });
     expectNoContractProblems();
   });

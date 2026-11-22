@@ -33,7 +33,18 @@ export async function registerProvider(payload) {
     return { status: 201, data: { message: "Proveedor registrado exitosamente." } };
   }
 
-  const { data } = await httpClient.post("/auth/register", payload);
+  const body = {
+    email: payload.email,
+    password: payload.password,
+    document_type: payload.documentType,
+    document_number: payload.documentNumber,
+    first_name: payload.firstName,
+    last_name: payload.lastName,
+    phone: payload.phone,
+  };
+  if (payload.birthDate) body.birth_date = payload.birthDate;
+
+  const { data } = await httpClient.post("/auth/register", body);
   return { status: 201, data };
 }
 
