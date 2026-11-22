@@ -730,3 +730,22 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .block-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .block-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; border: 1px solid var(--linea); border-radius: 12px; background: var(--papel); }
 .block-list small { font-size: 0.82rem; }
+
+/* ---------- Admin · proveedores: lista a la izquierda, detalle a la derecha ---------- */
+.admin-split { display: grid; gap: 22px; align-items: start; }
+.admin-split--open { grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr); }
+.admin-detail { position: sticky; top: 92px; margin-top: 0 !important; max-height: calc(100vh - 110px); overflow: auto; }
+.admin-detail h4 { margin: 18px 0 8px; font-size: 0.98rem; font-family: var(--font-display); }
+.admin-detail__meta { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.admin-detail__form { display: grid; gap: 12px; }
+.admin-detail__confirm { padding: 12px 14px; border: 1px solid var(--linea); border-left: 4px solid var(--girasol); border-radius: 12px; background: #fcf8ef; }
+.admin-detail__confirm p { margin: 0 0 10px; }
+.table--select tbody tr { cursor: pointer; transition: background 0.12s ease; }
+.table--select tbody tr:hover { background: #f6eddc; }
+.table--select tbody tr.is-selected { background: #f1e4ea; box-shadow: inset 4px 0 0 var(--selva); }
+.row-link { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--selva-700); cursor: pointer; text-align: left; }
+.row-link:hover { text-decoration: underline; }
+@media (max-width: 1000px) {
+  .admin-split--open { grid-template-columns: 1fr; }
+  .admin-detail { position: static; max-height: none; }
+}
