@@ -1,4 +1,6 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { getMyCompany } from "../api/companyService";
 import { useAuth } from "../context/AuthContext";
 import { LogoMark } from "./Icons";
 
@@ -15,6 +17,16 @@ function HomeIcon() {
 export default function Header() {
   const { isAuthenticated, isAdmin, provider, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [businessName, setBusinessName] = useState(null);
+
+  // Nombre del negocio del proveedor (se vuelve a pedir al cambiar de pantalla, por si lo editó).
+  useEffect(() => {
+    if (!isAuthenticated || isAdmin) { setBusinessName(null); return undefined; }
+    let alive = true;
+    getMyCompany().then((r) => { if (alive) setBusinessName(r.data?.name || null); }).catch(() => { if (alive) setBusinessName(null); });
+    return () => { alive = false; };
+  }, [isAuthenticated, isAdmin, pathname]);
 
   async function handleLogout() {
     await logout();
@@ -48,7 +60,10 @@ export default function Header() {
                 <NavLink to="/reportes" className={navClass}>Reportes</NavLink>
               </>
             )}
-            <span className="header__provider">{provider?.email}</span>
+            <span className="header__provider">
+              <strong>{isAdmin ? "Administrador" : businessName || "Mi cuenta"}</strong>
+              <small>{provider?.email}</small>
+            </span>
             <button className="btn btn--ghost" onClick={handleLogout}>
               Cerrar sesión
             </button>

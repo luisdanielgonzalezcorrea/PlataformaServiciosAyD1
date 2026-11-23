@@ -749,3 +749,8 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
   .admin-split--open { grid-template-columns: 1fr; }
   .admin-detail { position: static; max-height: none; }
 }
+
+/* Sesión del proveedor: nombre del negocio arriba y correo debajo */
+.header__provider { display: grid; line-height: 1.2; padding: 0 10px; text-align: right; max-width: 240px; }
+.header__provider strong { font-size: 0.9rem; font-weight: 600; color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header__provider small { font-size: 0.76rem; color: var(--tinta-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
