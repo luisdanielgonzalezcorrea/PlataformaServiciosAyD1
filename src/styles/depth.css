@@ -870,34 +870,39 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
   .sk, .toast { animation: none; }
 }
 
-/* ---------- Banner de login/registro: "agenda.co" en letras grandes y translúcidas, como membrete ---------- */
+/* ---------- Banner de login/registro: "agenda.co" grande y centrado en la franja sobre la tarjeta ---------- */
+.auth-page { padding-top: 242px; }
+.auth-page::before { height: 402px; }
 .auth-page::after {
   content: "agenda.co";
   content: "agenda.co" / "";
   position: absolute;
   z-index: 0;
-  top: 2px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: -28px;
+  left: calc(50% - 50vw);
+  width: 100vw;
+  height: 270px; /* = alto de la franja visible sobre la tarjeta */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   white-space: nowrap;
   font-family: var(--font-display);
   font-variation-settings: "opsz" 144;
   font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1;
-  font-size: clamp(84px, 12vw, 138px);
+  font-size: clamp(96px, 15vw, 176px);
   color: rgba(235, 207, 138, 0.2);
+  text-indent: -0.04em;
+  padding-bottom: 0.18em; /* compensa el espacio que deja la tipografía bajo la línea base */
+  box-sizing: border-box;
   pointer-events: none;
   user-select: none;
 }
 @media (max-width: 640px) {
-  .auth-page::after { top: 4px; font-size: 23vw; }
-}
-.auth-page { padding-top: 152px; }
-.auth-page::before { height: 312px; }
-@media (max-width: 640px) {
-  .auth-page { padding-top: 116px; }
-  .auth-page::before { height: 276px; }
+  .auth-page { padding-top: 150px; }
+  .auth-page::before { height: 310px; }
+  .auth-page::after { height: 178px; font-size: 21.5vw; }
 }
 
 /* ---------- Login: enlaces de apoyo con jerarquía (olvidé contraseña / crear cuenta / código) ---------- */
