@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Header from "./components/Header";
+import InactivityGuard from "./components/InactivityGuard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CatalogPage from "./pages/CatalogPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -28,6 +29,7 @@ export default function App() {
   return (
     <div className="app">
       <Header />
+      <InactivityGuard />
       <main className="app__main">
         <Routes>
           {/* HU-008 / HU-009 · Catálogo y detalle de servicio */}

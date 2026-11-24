@@ -757,9 +757,19 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 
 /* ---------- Gráfico del panel admin y detalle ---------- */
 .chart { margin: 0; }
-.chart svg { width: 100%; height: auto; display: block; }
-.chart__legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.86rem; color: var(--tinta-suave); }
-.chart__legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.chart__summary { margin: 0 0 14px; color: var(--tinta-suave); font-size: 0.95rem; }
+.chart__summary strong { color: var(--tinta); font-size: 1.15rem; }
+.chart__bars { display: flex; align-items: stretch; gap: 8px; height: 250px; padding: 0 2px; }
+.chart__bars--dense { gap: 3px; }
+.chart__col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: stretch; background: transparent; border: 0; padding: 0; font: inherit; color: var(--tinta); cursor: pointer; border-radius: 6px; }
+.chart__col:focus-visible { outline: 2px solid var(--selva); outline-offset: 2px; }
+.chart__val { height: 22px; line-height: 22px; text-align: center; font-weight: 700; font-size: 0.9rem; }
+.chart__track { flex: 1; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--linea); }
+.chart__bar { display: block; width: 100%; max-width: 44px; background: #d9c3cc; border-radius: 6px 6px 0 0; transition: background 0.15s; }
+.chart__col.is-peak .chart__bar { background: #b98a9a; }
+.chart__col.is-on .chart__bar { background: var(--selva); }
+.chart__tick { height: 26px; line-height: 26px; text-align: center; font-size: 0.78rem; color: var(--tinta-suave); white-space: nowrap; overflow: visible; }
+.chart__detail { margin: 14px 0 0; padding: 12px 14px; background: var(--niebla); border: 1px solid var(--linea); border-radius: 10px; font-size: 0.95rem; }
 .panel__head .seg { margin-left: auto; }
 .admin-detail__card { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--linea); border-radius: 12px; background: #fcf8ef; margin-bottom: 8px; }
 .admin-detail__card ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }

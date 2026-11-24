@@ -11,6 +11,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const expired = params.get("expired") === "1";
+  const inactive = params.get("inactive") === "1";
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -40,6 +41,7 @@ export default function LoginPage() {
         <p className="muted">Inicia sesión para administrar tus servicios y reservas.</p>
 
         {expired && !error && <div className="alert alert--info" role="status">Tu sesión venció. Inicia sesión de nuevo para continuar.</div>}
+        {inactive && !error && <div className="alert alert--info" role="status">Cerramos tu sesión tras 5 minutos sin actividad. Inicia sesión de nuevo para continuar.</div>}
         {error && <div className="alert alert--error">{error}</div>}
 
         <label className="field">

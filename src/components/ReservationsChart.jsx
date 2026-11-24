@@ -1,62 +1,70 @@
+import { useEffect, useState } from "react";
+
 /**
- * Gráfico de barras apiladas (SVG, sin librerías) de reservas por periodo.
+ * Barras simples: una barra por periodo con el total de reservas.
+ * Al pasar el mouse, enfocar o tocar una barra se ve el desglose por estado debajo.
  * series: [{ start: "YYYY-MM-DD", confirmed, pending, completed, cancelled, total }]
  */
 const PARTS = [
-  { key: "confirmed", label: "Confirmadas", color: "#5c1a33" },
-  { key: "pending", label: "Pendientes", color: "#d1a94e" },
-  { key: "completed", label: "Finalizadas", color: "#8a6420" },
-  { key: "cancelled", label: "Canceladas", color: "#b9a99a" },
+  ["confirmed", "confirmadas"],
+  ["pending", "pendientes"],
+  ["completed", "finalizadas"],
+  ["cancelled", "canceladas"],
 ];
 
-function label(start, period) {
+function label(start, period, long = false) {
   const d = new Date(`${start}T00:00:00`);
-  if (period === "MONTH") return d.toLocaleDateString("es-CO", { month: "short" }).replace(".", "");
-  return d.toLocaleDateString("es-CO", { day: "numeric", month: "short" }).replace(".", "");
+  if (period === "MONTH") {
+    return d.toLocaleDateString("es-CO", long ? { month: "long", year: "numeric" } : { month: "short" }).replace(".", "");
+  }
+  const text = d.toLocaleDateString("es-CO", { day: "numeric", month: "short" }).replace(".", "");
+  return period === "WEEK" && long ? `Semana del ${text}` : text;
 }
 
 export default function ReservationsChart({ series = [], period = "MONTH" }) {
-  const W = 640, H = 240, L = 34, R = 8, T = 10, B = 28;
+  const peakIndex = series.reduce((best, s, i) => ((s.total || 0) > (series[best]?.total || 0) ? i : best), 0);
+  const [sel, setSel] = useState(peakIndex);
+  useEffect(() => { setSel(peakIndex); }, [period, series.length, peakIndex]);
+
+  if (!series.length) return <p className="muted">Todavía no hay reservas para mostrar en este periodo.</p>;
+
+  const grandTotal = series.reduce((a, s) => a + (s.total || 0), 0);
   const max = Math.max(1, ...series.map((s) => s.total || 0));
-  const top = Math.ceil(max / 4) * 4 || 4;
-  const bw = series.length ? (W - L - R) / series.length : 0;
-  const barW = Math.min(36, bw * 0.62);
-  const y = (v) => T + (H - T - B) * (1 - v / top);
-  const ticks = [0, 1, 2, 3, 4].map((i) => Math.round((top / 4) * i));
-  const step = series.length > 14 ? Math.ceil(series.length / 8) : 1;
+  const dense = series.length > 14;
+  const labelEvery = dense ? Math.ceil(series.length / 7) : 1;
+  const cur = series[Math.min(sel, series.length - 1)];
+  const unit = { DAY: "por día", WEEK: "por semana", MONTH: "por mes" }[period];
 
   return (
     <figure className="chart">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Reservas por periodo, apiladas por estado">
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={L} x2={W - R} y1={y(t)} y2={y(t)} stroke="#e2d6c0" strokeWidth="1" />
-            <text x={L - 6} y={y(t) + 4} textAnchor="end" fontSize="11" fill="#6a5a60">{t}</text>
-          </g>
-        ))}
+      <p className="chart__summary">
+        <strong>{grandTotal}</strong> reservas en total · el pico es de <strong>{max}</strong> {unit}
+      </p>
+      <div className={`chart__bars${dense ? " chart__bars--dense" : ""}`} role="list" aria-label={`Reservas ${unit}`}>
         {series.map((s, i) => {
-          const x = L + bw * i + (bw - barW) / 2;
-          let acc = 0;
+          const total = s.total || 0;
           return (
-            <g key={s.start}>
-              <title>{`${label(s.start, period)}: ${s.total} reservas (${PARTS.map((p) => `${p.label.toLowerCase()} ${s[p.key] || 0}`).join(", ")})`}</title>
-              {PARTS.map((p) => {
-                const v = s[p.key] || 0;
-                if (!v) return null;
-                const y0 = y(acc), y1 = y(acc + v);
-                acc += v;
-                return <rect key={p.key} x={x} y={y1} width={barW} height={Math.max(1, y0 - y1)} fill={p.color} rx="2" />;
-              })}
-              {i % step === 0 && <text x={x + barW / 2} y={H - 8} textAnchor="middle" fontSize="11" fill="#6a5a60">{label(s.start, period)}</text>}
-            </g>
+            <button
+              key={s.start}
+              type="button"
+              role="listitem"
+              className={`chart__col${i === sel ? " is-on" : ""}${i === peakIndex ? " is-peak" : ""}`}
+              onMouseEnter={() => setSel(i)}
+              onFocus={() => setSel(i)}
+              onClick={() => setSel(i)}
+              aria-label={`${label(s.start, period, true)}: ${total} reservas`}
+            >
+              <span className="chart__val">{!dense || i === sel ? total : ""}</span>
+              <span className="chart__track"><span className="chart__bar" style={{ height: `${total ? Math.max(4, (total / max) * 100) : 2}%` }} /></span>
+              <span className="chart__tick">{i % labelEvery === 0 || i === sel ? label(s.start, period) : ""}</span>
+            </button>
           );
         })}
-      </svg>
-      <figcaption>
-        <ul className="chart__legend">
-          {PARTS.map((p) => <li key={p.key}><i style={{ background: p.color }} aria-hidden="true" />{p.label}</li>)}
-        </ul>
-      </figcaption>
+      </div>
+      <p className="chart__detail" aria-live="polite">
+        <strong>{label(cur.start, period, true)}</strong>: {cur.total || 0} reservas
+        {(cur.total || 0) > 0 && <> — {PARTS.filter(([k]) => cur[k]).map(([k, t]) => `${cur[k]} ${t}`).join(", ")}</>}
+      </p>
     </figure>
   );
 }
