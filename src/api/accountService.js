@@ -227,7 +227,8 @@ export async function adminResetProviderPassword(providerId) {
 }
 
 export async function adminUpdateProviderContact(providerId, { email, phone, justification }) {
-  if (USE_MOCKS) { await wait(300); return { status: 200, data: { email, phone } }; }
+  // El back deja la cuenta en pendiente si cambia el correo (verified:false) y envía un código al correo nuevo.
+  if (USE_MOCKS) { await wait(300); return { status: 200, data: { email, phone, ...(email ? { verified: false } : {}) } }; }
   const body = { justification };
   if (email) body.email = email;
   if (phone) body.phone = phone;

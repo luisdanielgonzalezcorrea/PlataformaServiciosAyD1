@@ -58,11 +58,14 @@ export default function AdminProvidersPage() {
     setBusy(true);
     try {
       const { data } = await adminUpdateProviderContact(selected.id, { ...changes, justification: contact.justification.trim() });
-      const updated = { ...selected, ...changes, ...(data && data.id ? data : {}) };
+      // Si cambió el correo, la cuenta queda pendiente hasta que el proveedor confirme el código en el correo nuevo.
+      const updated = { ...selected, ...changes, ...(data && data.id ? data : {}), ...(changes.email ? { verified: false } : {}) };
       setSelected(updated);
       setItems((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
       setContact({ email: updated.email || "", phone: updated.phone || "", justification: "" });
-      toast.success("Actualizamos el contacto. Avisamos al proveedor por correo.");
+      toast.success(changes.email
+        ? `Actualizamos el contacto. La cuenta quedó pendiente: enviamos un código a ${changes.email} y el proveedor debe confirmarlo para volver a entrar.`
+        : "Actualizamos el contacto. Avisamos al proveedor por correo.");
     } catch (err) { setNotice({ type: "error", text: err.friendlyMessage || "No se pudo actualizar." }); }
     finally { setBusy(false); }
   }

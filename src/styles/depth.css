@@ -679,7 +679,7 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .auth-page::before {
   background-color: transparent;
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='110' height='110' viewBox='-5 -3 50 52'%3E%3Cdefs%3E%3Cfilter id='s' x='-30%25' y='-30%25' width='160%25' height='170%25'%3E%3CfeDropShadow dx='0' dy='2.4' stdDeviation='2.2' flood-color='%23000' flood-opacity='.45'/%3E%3C/filter%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%235C1A33'/%3E%3Cstop offset='1' stop-color='%232B0A17'/%3E%3C/linearGradient%3E%3ClinearGradient id='a' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23EBCF8A'/%3E%3Cstop offset='1' stop-color='%23B98A2F'/%3E%3C/linearGradient%3E%3CclipPath id='c'%3E%3Crect x='9' y='9' width='22' height='24' rx='4.5'/%3E%3C/clipPath%3E%3C/defs%3E%3Cg filter='url(%23s)'%3E%3Crect width='40' height='40' rx='12' fill='url(%23g)' stroke='%23d1a94e' stroke-width='.8'/%3E%3Crect x='9' y='9' width='22' height='24' rx='4.5' fill='%23F6EFDF'/%3E%3Cg clip-path='url(%23c)'%3E%3Crect x='9' y='9' width='22' height='7.2' fill='url(%23a)'/%3E%3C/g%3E%3Crect x='14' y='6' width='2.6' height='6' rx='1.3' fill='%23F6EFDF' stroke='%232B0A17'/%3E%3Crect x='23.4' y='6' width='2.6' height='6' rx='1.3' fill='%23F6EFDF' stroke='%232B0A17'/%3E%3Cpath d='M14.3 24.2l4 4 7.6-8.2' fill='none' stroke='%235C1A33' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(transparent, transparent),
     radial-gradient(620px 300px at 85% 0%, rgba(209, 169, 78, 0.28), transparent 62%),
     var(--grad-selva);
   background-size: 112px 112px, auto, auto;
@@ -868,4 +868,34 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 
 @media (prefers-reduced-motion: reduce) {
   .sk, .toast { animation: none; }
+}
+
+/* ---------- Banner de login/registro: "agenda.co" en letras grandes y translúcidas, como membrete ---------- */
+.auth-page::after {
+  content: "agenda.co";
+  content: "agenda.co" / "";
+  position: absolute;
+  z-index: 0;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 144;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-size: clamp(84px, 12vw, 138px);
+  color: rgba(235, 207, 138, 0.2);
+  pointer-events: none;
+  user-select: none;
+}
+@media (max-width: 640px) {
+  .auth-page::after { top: 4px; font-size: 23vw; }
+}
+.auth-page { padding-top: 152px; }
+.auth-page::before { height: 312px; }
+@media (max-width: 640px) {
+  .auth-page { padding-top: 116px; }
+  .auth-page::before { height: 276px; }
 }
