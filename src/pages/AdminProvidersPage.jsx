@@ -1,7 +1,6 @@
 import { SkeletonList } from "../components/Skeleton";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "../components/Toast";
-import { resendVerificationCode } from "../api/authService";
 import { adminResetProviderPassword, adminUpdateProviderContact, getAdminProvider, listAdminProviders } from "../api/accountService";
 
 /**
@@ -46,15 +45,6 @@ export default function AdminProvidersPage() {
       const { data } = await adminResetProviderPassword(selected.id);
       toast.success(`Enviamos el enlace de restablecimiento a ${data?.email || selected.email}. Vence en 30 minutos.`);
     } catch (err) { setNotice({ type: "error", text: err.friendlyMessage || "No se pudo restablecer." }); }
-    finally { setBusy(false); }
-  }
-
-  async function resendVerification() {
-    setBusy(true); setNotice(null);
-    try {
-      await resendVerificationCode(selected.email);
-      toast.success(`Enviamos un código nuevo a ${selected.email}. El proveedor lo escribe en “Verificar correo”, desde el inicio de sesión.`);
-    } catch (err) { setNotice({ type: "error", text: err.friendlyMessage || "No se pudo reenviar la verificación." }); }
     finally { setBusy(false); }
   }
 
@@ -143,14 +133,6 @@ export default function AdminProvidersPage() {
                   </div>
                 ))}
               </div>
-            )}
-
-            {!selected.verified && (
-              <>
-                <h4>Verificación del correo</h4>
-                <p className="muted small">Este proveedor aún no verifica su correo, así que no puede iniciar sesión. Le enviaremos un código de 6 dígitos y lo escribe en la pantalla “Verificar correo”.</p>
-                <button type="button" className="btn btn--primary" disabled={busy} onClick={resendVerification}>Reenviar enlace de verificación</button>
-              </>
             )}
 
             <h4>Contraseña</h4>

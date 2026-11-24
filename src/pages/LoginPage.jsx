@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { resendVerificationCode } from "../api/authService";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -12,12 +13,10 @@ export default function LoginPage() {
   const [params] = useSearchParams();
   const expired = params.get("expired") === "1";
   const inactive = params.get("inactive") === "1";
-  const [notVerified, setNotVerified] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    setNotVerified(false);
 
     if (!email || !password) {
       setError("Ingresa tu correo y contraseña.");
@@ -30,8 +29,13 @@ export default function LoginPage() {
       navigate(data.isAdmin ? "/admin" : "/negocio");
     } catch (err) {
       // HU-004 · Inicio de sesión fallido
+      if (err.code === "EMAIL_NOT_VERIFIED") {
+        // Credenciales correctas pero sin verificar: se envía un código nuevo y se abre la pantalla para escribirlo.
+        try { await resendVerificationCode(email); } catch { /* en esa pantalla puede pedir otro */ }
+        navigate("/verificar-correo", { state: { email, notice: "Tu correo aún no estaba verificado. Te enviamos un código nuevo; escríbelo para activar tu cuenta." } });
+        return;
+      }
       setError(err.friendlyMessage || "Correo o contraseña incorrectos.");
-      setNotVerified(err.code === "EMAIL_NOT_VERIFIED");
     } finally {
       setSubmitting(false);
     }
@@ -45,14 +49,7 @@ export default function LoginPage() {
 
         {expired && !error && <div className="alert alert--info" role="status">Tu sesión venció. Inicia sesión de nuevo para continuar.</div>}
         {inactive && !error && <div className="alert alert--info" role="status">Cerramos tu sesión tras 3 minutos sin actividad. Inicia sesión de nuevo para continuar.</div>}
-        {error && (
-          <div className="alert alert--error">
-            {error}
-            {notVerified && (
-              <> <button type="button" className="link-btn" onClick={() => navigate("/verificar-correo", { state: { email } })}>Verificar mi correo</button></>
-            )}
-          </div>
-        )}
+        {error && <div className="alert alert--error">{error}</div>}
 
         <label className="field">
           <span>Correo electrónico</span>

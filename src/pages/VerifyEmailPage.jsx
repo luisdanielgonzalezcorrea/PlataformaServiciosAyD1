@@ -15,6 +15,7 @@ export default function VerifyEmailPage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const notice = state?.notice;
   const [attemptsLeft, setAttemptsLeft] = useState(MAX_ATTEMPTS);
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
@@ -88,6 +89,7 @@ export default function VerifyEmailPage() {
           Enviamos un código de verificación a <strong>{email}</strong>.
         </p>
 
+        {notice && !error && !success && <div className="alert alert--info" role="status">{notice}</div>}
         {error && <div className="alert alert--error">{error}</div>}
         {success && <div className="alert alert--success">{success}</div>}
 
