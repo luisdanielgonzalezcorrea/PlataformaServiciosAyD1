@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
  * Pie de página: qué es el sitio, enlaces útiles y datos del proyecto académico.
  * Para poner el nombre del docente, edita SUPERVISION.
  */
-const SUPERVISION = "docentes de CodeF@ctory, Universidad de Antioquia";
+const SUPERVISION = "Docentes de CodeF@ctory, Universidad de Antioquia";
 
 const NAV = [
   ["Catálogo de servicios", "/"],
