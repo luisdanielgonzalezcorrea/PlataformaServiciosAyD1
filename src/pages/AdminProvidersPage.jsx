@@ -53,7 +53,7 @@ export default function AdminProvidersPage() {
     setBusy(true); setNotice(null);
     try {
       await resendVerificationCode(selected.email);
-      toast.success(`Reenviamos la verificación a ${selected.email}. El código anterior dejó de servir.`);
+      toast.success(`Enviamos un código nuevo a ${selected.email}. El proveedor lo escribe en “Verificar correo”, desde el inicio de sesión.`);
     } catch (err) { setNotice({ type: "error", text: err.friendlyMessage || "No se pudo reenviar la verificación." }); }
     finally { setBusy(false); }
   }
@@ -148,7 +148,7 @@ export default function AdminProvidersPage() {
             {!selected.verified && (
               <>
                 <h4>Verificación del correo</h4>
-                <p className="muted small">Este proveedor aún no verifica su correo, así que no puede iniciar sesión.</p>
+                <p className="muted small">Este proveedor aún no verifica su correo, así que no puede iniciar sesión. Le enviaremos un código de 6 dígitos y lo escribe en la pantalla “Verificar correo”.</p>
                 <button type="button" className="btn btn--primary" disabled={busy} onClick={resendVerification}>Reenviar enlace de verificación</button>
               </>
             )}

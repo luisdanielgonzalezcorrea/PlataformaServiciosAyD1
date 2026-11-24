@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { verifyEmail, resendVerificationCode } from "../api/authService";
 
 const MAX_ATTEMPTS = 3;
@@ -7,7 +7,10 @@ const MAX_ATTEMPTS = 3;
 export default function VerifyEmailPage() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const email = state?.email;
+  // El correo llega del registro o del login; si el código lo reenvió un administrador, lo escribe la persona.
+  const [typedEmail, setTypedEmail] = useState("");
+  const [askEmail, setAskEmail] = useState(state?.email || "");
+  const email = askEmail;
 
   const [code, setCode] = useState("");
   const [error, setError] = useState(null);
@@ -15,13 +18,6 @@ export default function VerifyEmailPage() {
   const [attemptsLeft, setAttemptsLeft] = useState(MAX_ATTEMPTS);
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
-
-  useEffect(() => {
-    if (!email) {
-      // Si llegan directo a esta ruta sin haberse registrado, los devolvemos.
-      navigate("/registro", { replace: true });
-    }
-  }, [email, navigate]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -63,6 +59,26 @@ export default function VerifyEmailPage() {
   }
 
   const blocked = attemptsLeft <= 0;
+
+  if (!email) {
+    return (
+      <div className="auth-page">
+        <form
+          className="card auth-card"
+          onSubmit={(e) => { e.preventDefault(); if (typedEmail.trim()) setAskEmail(typedEmail.trim()); }}
+        >
+          <h1>Verifica tu correo</h1>
+          <p className="muted">Escribe el correo de tu cuenta y luego el código de 6 dígitos que te enviamos.</p>
+          <label className="field">
+            <span>Correo electrónico</span>
+            <input type="email" value={typedEmail} onChange={(e) => setTypedEmail(e.target.value)} autoComplete="email" required />
+          </label>
+          <button className="btn btn--primary" type="submit">Continuar</button>
+          <p className="muted small center">¿Aún no tienes cuenta? <Link to="/registro">Regístrate</Link></p>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">

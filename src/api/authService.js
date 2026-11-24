@@ -109,7 +109,7 @@ export async function login({ email, password }) {
   if (USE_MOCKS) {
     await wait();
     if (!mockState.verifiedEmails.has(email) && email !== "demo@agenda.co") {
-      throw { friendlyMessage: "Debes verificar tu correo antes de iniciar sesión." };
+      throw { friendlyMessage: "Debes verificar tu correo antes de iniciar sesión.", code: "EMAIL_NOT_VERIFIED" };
     }
     if (password.length < 8) {
       throw { friendlyMessage: "Correo o contraseña incorrectos." };

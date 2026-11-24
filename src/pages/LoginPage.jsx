@@ -12,10 +12,12 @@ export default function LoginPage() {
   const [params] = useSearchParams();
   const expired = params.get("expired") === "1";
   const inactive = params.get("inactive") === "1";
+  const [notVerified, setNotVerified] = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    setNotVerified(false);
 
     if (!email || !password) {
       setError("Ingresa tu correo y contraseña.");
@@ -29,6 +31,7 @@ export default function LoginPage() {
     } catch (err) {
       // HU-004 · Inicio de sesión fallido
       setError(err.friendlyMessage || "Correo o contraseña incorrectos.");
+      setNotVerified(err.code === "EMAIL_NOT_VERIFIED");
     } finally {
       setSubmitting(false);
     }
@@ -42,7 +45,14 @@ export default function LoginPage() {
 
         {expired && !error && <div className="alert alert--info" role="status">Tu sesión venció. Inicia sesión de nuevo para continuar.</div>}
         {inactive && !error && <div className="alert alert--info" role="status">Cerramos tu sesión tras 3 minutos sin actividad. Inicia sesión de nuevo para continuar.</div>}
-        {error && <div className="alert alert--error">{error}</div>}
+        {error && (
+          <div className="alert alert--error">
+            {error}
+            {notVerified && (
+              <> <button type="button" className="link-btn" onClick={() => navigate("/verificar-correo", { state: { email } })}>Verificar mi correo</button></>
+            )}
+          </div>
+        )}
 
         <label className="field">
           <span>Correo electrónico</span>
@@ -72,6 +82,9 @@ export default function LoginPage() {
 
         <p className="muted center">
           ¿Aún no tienes cuenta? <Link to="/registro">Regístrate</Link>
+        </p>
+        <p className="muted small center">
+          ¿Te enviaron un código de verificación? <Link to="/verificar-correo">Verifica tu correo</Link>
         </p>
       </form>
     </div>
