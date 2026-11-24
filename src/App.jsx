@@ -4,6 +4,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import { titleFor } from "./utils/pageTitle";
 import Header from "./components/Header";
 import InactivityGuard from "./components/InactivityGuard";
+import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 import CatalogPage from "./pages/CatalogPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -109,6 +110,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
+      <Footer />
     </div>
   );
 }

@@ -914,3 +914,32 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .auth-alt .btn { justify-content: center; text-align: center; }
 .auth-alt__code { align-self: center; font-size: 0.86rem; color: #6a5a60; text-decoration: none; padding: 2px 4px; border-radius: 6px; }
 .auth-alt__code:hover { color: #5c1a33; text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- Pie de página ---------- */
+.footer { margin-top: 64px; color: #f7f2e8; background: radial-gradient(640px 260px at 90% 0%, rgba(209, 169, 78, 0.16), transparent 62%), linear-gradient(160deg, #3a0f22 0%, #2b0a17 100%); border-top: 3px solid #d1a94e; }
+.footer__inner { max-width: 1180px; margin: 0 auto; padding: 48px 28px 34px; display: grid; gap: 36px 40px; grid-template-columns: 1.35fr 0.9fr 1fr 1.5fr; }
+.footer__logo { margin: 0 0 10px; font-family: var(--font-display); font-weight: 700; font-size: 1.9rem; letter-spacing: -0.02em; color: #f7f2e8; }
+.footer__logo span { color: #ebcf8a; font-weight: 500; }
+.footer__text { margin: 0 0 10px; font-size: 0.93rem; line-height: 1.55; color: #e6d9dd; max-width: 46ch; }
+.footer__text strong { color: #f7f2e8; }
+.footer__badge { display: inline-block; margin: 6px 0 0; padding: 6px 14px; border-radius: 999px; background: #d1a94e; color: #2b0a17; font-weight: 700; font-size: 0.84rem; }
+.footer__col h2 { margin: 0 0 14px; font-family: var(--font-body); font-size: 0.95rem; font-weight: 700; color: #ebcf8a; letter-spacing: 0.01em; }
+.footer__col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.footer__col a { color: #f7f2e8; text-decoration: none; font-size: 0.93rem; border-radius: 6px; }
+.footer__col a:hover { color: #ebcf8a; text-decoration: underline; text-underline-offset: 3px; }
+.footer__col a:focus-visible { outline: 2px solid #ebcf8a; outline-offset: 3px; }
+.footer__teams { margin-top: 12px !important; padding-top: 14px; border-top: 1px solid rgba(235, 207, 138, 0.28); gap: 8px !important; }
+.footer__teams li { font-size: 0.88rem; line-height: 1.45; color: #e6d9dd; }
+.footer__teams strong { color: #ebcf8a; margin-right: 4px; }
+.footer__legal { border-top: 1px solid rgba(235, 207, 138, 0.22); background: rgba(0, 0, 0, 0.18); }
+.footer__legal p { max-width: 1180px; margin: 0 auto; padding: 18px 28px 22px; font-size: 0.84rem; line-height: 1.55; color: #d9c8cd; }
+@media (max-width: 960px) { .footer__inner { grid-template-columns: 1fr 1fr; } .footer__brand { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .footer { margin-top: 40px; } .footer__inner { grid-template-columns: 1fr; padding: 36px 20px 26px; gap: 28px; } .footer__legal p { padding: 16px 20px 20px; } }
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.app__main { flex: 1 0 auto; width: 100%; box-sizing: border-box; }
+.footer { margin-top: 0; }
+.app__main { padding-bottom: 56px; }
+@media (max-width: 560px) { .app__main { padding-bottom: 36px; } }
+.footer__col ul.footer__courses { gap: 8px; margin: 0 0 14px; }
+.footer__courses li { position: relative; padding-left: 20px; font-size: 0.93rem; font-weight: 600; color: #f7f2e8; }
+.footer__courses li::before { content: ""; position: absolute; left: 3px; top: 0.5em; width: 7px; height: 7px; background: #d1a94e; transform: rotate(45deg); border-radius: 1px; }
