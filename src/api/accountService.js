@@ -152,27 +152,41 @@ export async function checkIsAdmin() {
 }
 
 /** GET /admin/overview -> { providers, companies, services, activeServices, clients, reservations:{total,pending,confirmed,cancelled,completed} } */
-export async function getAdminOverview() {
+/** GET /admin/overview?period=DAY|WEEK|MONTH -> totales + series (reservas por periodo, listas para graficar). */
+export async function getAdminOverview(period = "MONTH") {
   if (USE_MOCKS) {
     await wait(250);
-    const by = (s) => reservations.filter((r) => r.status === s).length;
+    const by = (st) => reservations.filter((r) => r.status === st).length;
+    const n = period === "DAY" ? 14 : period === "WEEK" ? 8 : 6;
+    const today = new Date();
+    const series = Array.from({ length: n }, (_, i) => {
+      const d = new Date(today);
+      if (period === "DAY") d.setDate(d.getDate() - (n - 1 - i));
+      else if (period === "WEEK") d.setDate(d.getDate() - 7 * (n - 1 - i));
+      else d.setMonth(d.getMonth() - (n - 1 - i), 1);
+      const confirmed = (i * 3 + 2) % 7 + 1, pending = (i * 2) % 3, cancelled = i % 3 === 0 ? 1 : 0, completed = (i * 5) % 4;
+      return { start: d.toISOString().slice(0, 10), total: confirmed + pending + cancelled + completed, pending, confirmed, cancelled, completed };
+    });
     return {
       status: 200,
       data: {
         providers: 3, companies: 3, services: mockServices.length,
-        activeServices: mockServices.filter((s) => s.isActive).length, clients: clients.size,
+        activeServices: mockServices.filter((x) => x.isActive).length, clients: clients.size,
         reservations: { total: reservations.length, pending: by("PENDING"), confirmed: by("CONFIRMED"), cancelled: by("CANCELLED"), completed: by("COMPLETED") },
+        period, series,
       },
     };
   }
-  const { data } = await httpClient.get("/admin/overview");
+  const { data } = await httpClient.get("/admin/overview", { params: { period } });
   return { status: 200, data };
 }
 
 const MOCK_PROVIDERS = [
-  { id: "p-1", firstName: "Laura", lastName: "Mejía", email: "laura@menteclara.co", verified: true, companies: 1 },
-  { id: "p-2", firstName: "Andrés", lastName: "Ruiz", email: "andres@estudionorte.co", verified: true, companies: 1 },
-  { id: "p-3", firstName: "Sara", lastName: "Gil", email: "sara@casarespira.co", verified: false, companies: 0 },
+  { id: "p-1", firstName: "Laura", lastName: "Mejía", email: "laura@menteclara.co", phone: "+573001112233", verified: true, companies: 1, nit: "900123456-1",
+    businesses: [{ id: "c-1", name: "Mente Clara", nit: "900123456-1", address: "Cra 43A # 5-20" }], categories: ["Salud mental"], comunas: ["El Poblado"] },
+  { id: "p-2", firstName: "Andrés", lastName: "Ruiz", email: "andres@estudionorte.co", phone: "+573004445566", verified: true, companies: 1, nit: "901234567-2",
+    businesses: [{ id: "c-2", name: "Estudio Norte", nit: "901234567-2", address: "Cl 50 # 40-10" }], categories: ["Asesoría legal"], comunas: ["La Candelaria"] },
+  { id: "p-3", firstName: "Sara", lastName: "Gil", email: "sara@casarespira.co", phone: "+573007778899", verified: false, companies: 0, nit: null, businesses: [], categories: [], comunas: [] },
 ];
 
 /** GET /admin/providers?page&size -> PageView de { id, firstName, lastName, email, verified, companies } */
@@ -185,8 +199,24 @@ export async function listAdminProviders({ page = 0, size = 100 } = {}) {
   return { status: 200, data };
 }
 
+/** GET /admin/providers/{id}: mismos campos del listado + documento y servicios (activos e inactivos). */
+export async function getAdminProvider(id) {
+  if (USE_MOCKS) {
+    await wait(200);
+    const p = MOCK_PROVIDERS.find((x) => x.id === id);
+    if (!p) throw apiError("NOT_FOUND", "Proveedor no encontrado.", 404);
+    const services = p.businesses.map((b, i) => ({
+      id: `${b.id}-s1`, name: i === 0 ? "Servicio principal" : "Servicio", companyId: b.id, companyName: b.name, category: p.categories[0] || "General",
+      modality: "PRESENCIAL", comunaName: p.comunas[0] || null, cost: 90000, durationMinutes: 60, capacity: 1, isActive: true,
+    }));
+    return { status: 200, data: { ...p, documentType: "CC", documentNumber: "1000000000", services } };
+  }
+  const { data } = await httpClient.get(`/admin/providers/${id}`);
+  return { status: 200, data };
+}
+
 /**
- * PENDIENTE DE BACK (HU-044): no existen estos endpoints. Contrato propuesto:
+ * HU-044 (endpoints ya disponibles en el back): no existen estos endpoints. Contrato propuesto:
  *   POST  /admin/providers/{id}/password-reset            -> 200 (envía enlace o clave temporal por correo)
  *   PATCH /admin/providers/{id}/contact { email?, phone?, justification } -> 200
  */

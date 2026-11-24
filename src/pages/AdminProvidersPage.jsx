@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { adminResetProviderPassword, adminUpdateProviderContact, listAdminProviders } from "../api/accountService";
+import { adminResetProviderPassword, adminUpdateProviderContact, getAdminProvider, listAdminProviders } from "../api/accountService";
 
 /**
  * HU-043 · Listado de proveedores con búsqueda y filtro por estado, y detalle.
@@ -17,6 +17,7 @@ export default function AdminProvidersPage() {
   const [notice, setNotice] = useState(null);
   const [busy, setBusy] = useState(false);
   const [askReset, setAskReset] = useState(false);
+  const [detail, setDetail] = useState(null);
 
   useEffect(() => { listAdminProviders().then((r) => setItems(r.data.items)).catch((e) => { setItems([]); setError(e.friendlyMessage || "No pudimos cargar los proveedores."); }); }, []);
 
@@ -25,13 +26,14 @@ export default function AdminProvidersPage() {
     return (items || []).filter((p) => {
       if (status === "VERIFIED" && !p.verified) return false;
       if (status === "PENDING" && p.verified) return false;
-      return !q || `${p.firstName} ${p.lastName} ${p.email}`.toLowerCase().includes(q);
+      return !q || `${p.firstName} ${p.lastName} ${p.email} ${p.nit || ""} ${(p.businesses || []).map((b) => b.name).join(" ")}`.toLowerCase().includes(q);
     });
   }, [items, search, status]);
 
   function open(p) {
     setSelected(p); setContact({ email: p.email || "", phone: p.phone || "", justification: "" });
-    setNotice(null); setAskReset(false);
+    setNotice(null); setAskReset(false); setDetail(null);
+    getAdminProvider(p.id).then((r) => setDetail(r.data)).catch(() => setDetail(false));
   }
 
   async function reset() {
@@ -69,7 +71,7 @@ export default function AdminProvidersPage() {
       <div className={selected ? "admin-split admin-split--open" : "admin-split"}>
         <div className="admin-split__list">
           <div className="toolbar">
-            <label className="field"><span>Buscar por nombre o correo</span><input value={search} onChange={(e) => setSearch(e.target.value)} /></label>
+            <label className="field"><span>Buscar por nombre, correo, NIT o negocio</span><input value={search} onChange={(e) => setSearch(e.target.value)} /></label>
             <label className="field"><span>Estado</span>
               <select value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="ALL">Todos</option><option value="VERIFIED">Verificados</option><option value="PENDING">Pendientes de verificar</option></select></label>
@@ -79,12 +81,12 @@ export default function AdminProvidersPage() {
           {shown.length > 0 && (
             <div className="table-wrap">
               <table className="table table--select">
-                <thead><tr><th>Proveedor</th><th>Correo</th><th>Negocios</th><th>Estado</th></tr></thead>
+                <thead><tr><th>Proveedor</th><th>NIT</th><th>Categorías</th><th>Comunas</th><th>Estado</th></tr></thead>
                 <tbody>
                   {shown.map((p) => (
                     <tr key={p.id} className={selected?.id === p.id ? "is-selected" : ""} onClick={() => open(p)}>
                       <td><button type="button" className="row-link" onClick={(e) => { e.stopPropagation(); open(p); }} aria-pressed={selected?.id === p.id}>{p.firstName} {p.lastName}</button></td>
-                      <td>{p.email}</td><td>{p.companies}</td>
+                      <td>{p.nit || "—"}</td><td>{(p.categories || []).join(", ") || "—"}</td><td>{(p.comunas || []).join(", ") || "—"}</td>
                       <td><span className={`badge ${p.verified ? "badge--ok" : "badge--warn"}`}>{p.verified ? "Verificado" : "Pendiente"}</span></td>
                     </tr>
                   ))}
@@ -102,9 +104,33 @@ export default function AdminProvidersPage() {
             </div>
             <p className="admin-detail__meta">
               <span className={`badge ${selected.verified ? "badge--ok" : "badge--warn"}`}>{selected.verified ? "Verificado" : "Pendiente"}</span>
-              <span className="muted">{selected.companies} negocio(s)</span>
+              <span className="muted">{selected.companies} negocio(s){selected.nit ? ` · NIT ${selected.nit}` : ""}</span>
             </p>
             {notice && <div className={`alert alert--${notice.type === "error" ? "error" : "success"}`} role="status">{notice.text}</div>}
+
+            <h4>Negocios y servicios</h4>
+            {detail === null && <p className="muted small">Cargando…</p>}
+            {detail === false && <p className="muted small">No pudimos cargar el detalle.</p>}
+            {detail && (
+              <div className="admin-detail__biz">
+                <p className="muted small">{detail.documentType} {detail.documentNumber} · {detail.email}{detail.phone ? ` · ${detail.phone}` : ""}</p>
+                {(detail.businesses || []).length === 0 && <p className="muted small">Aún no registra negocios.</p>}
+                {(detail.businesses || []).map((b) => (
+                  <div key={b.id} className="admin-detail__card">
+                    <strong>{b.name}</strong>
+                    <span className="muted small">NIT {b.nit}{b.address ? ` · ${b.address}` : ""}</span>
+                    <ul>
+                      {(detail.services || []).filter((x) => x.companyId === b.id).map((x) => (
+                        <li key={x.id}>
+                          <span>{x.name}<small className="muted"> · {x.modality === "VIRTUAL" ? "Virtual" : x.comunaName || "Presencial"}</small></span>
+                          <span className={`badge ${x.isActive ? "badge--ok" : "badge--off"}`}>{x.isActive ? "Activo" : "Inactivo"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <h4>Contraseña</h4>
             {!askReset ? (

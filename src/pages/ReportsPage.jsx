@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { getDemandReport, getOccupancyReport, getReservationsReport, listMyServices } from "../api/providerService";
 import { STATUS_TEXT, classifyOccupancy, pct, validateReportRange } from "../utils/sprint3";
 
@@ -6,11 +6,14 @@ import { STATUS_TEXT, classifyOccupancy, pct, validateReportRange } from "../uti
  * HU-038 · Reporte de reservas (por rango de fechas y servicio, con detalle por estado).
  * HU-039 · Reporte de ocupación (porcentaje, espacios libres, sin ocupación y completos) + demanda.
  */
+const DAYS = { 1: "Lunes", 2: "Martes", 3: "Miércoles", 4: "Jueves", 5: "Viernes", 6: "Sábado", 7: "Domingo" };
+
 export default function ReportsPage() {
   const [filters, setFilters] = useState({ serviceId: "", fromDate: "", toDate: "" });
   const [services, setServices] = useState([]);
   const [reservations, setReservations] = useState(null);
   const [occupancy, setOccupancy] = useState(null);
+  const [openSlots, setOpenSlots] = useState(null);
   const [demand, setDemand] = useState(null);
   const [error, setError] = useState(null);
   const [rangeError, setRangeError] = useState(null);
@@ -82,8 +85,13 @@ export default function ReportsPage() {
                   <thead><tr><th>Servicio</th><th>Reservados</th><th>Libres</th><th>Capacidad</th><th>Ocupación</th></tr></thead>
                   <tbody>
                     {occ.rows.map((r) => (
-                      <tr key={r.serviceId}>
-                        <td>{r.name}</td><td>{r.booked}</td><td>{r.free}</td><td>{r.capacity}</td>
+                      <Fragment key={r.serviceId}>
+                      <tr>
+                        <td>{r.name}{r.slots?.length > 0 && (
+                          <button type="button" className="link-btn" style={{ marginLeft: 8 }} onClick={() => setOpenSlots((o) => (o === r.serviceId ? null : r.serviceId))} aria-expanded={openSlots === r.serviceId}>
+                            {openSlots === r.serviceId ? "Ocultar horarios" : "Ver horarios"}
+                          </button>
+                        )}</td><td>{r.booked}</td><td>{r.free}</td><td>{r.capacity}</td>
                         <td>
                           <div className="meter" role="img" aria-label={`${pct(r.occupancyPercent)} de ocupación`}>
                             <span style={{ width: `${Math.min(100, r.occupancyPercent)}%` }} />
@@ -93,6 +101,22 @@ export default function ReportsPage() {
                           {r.level === "EMPTY" && <span className="badge"> Sin ocupación</span>}
                         </td>
                       </tr>
+                      {openSlots === r.serviceId && (
+                        <tr className="row-detail"><td colSpan={5}>
+                          <table className="table table--inner">
+                            <thead><tr><th>Día</th><th>Franja</th><th>Cupo</th><th>Ocupados</th><th>Disponibles</th><th>Ocupación</th></tr></thead>
+                            <tbody>
+                              {r.slots.map((sl) => (
+                                <tr key={`${sl.dayOfWeek}-${sl.startTime}`}>
+                                  <td>{DAYS[sl.dayOfWeek]}</td><td>{sl.startTime} – {sl.endTime}</td><td>{sl.capacity}</td><td>{sl.booked}</td><td>{sl.available}</td>
+                                  <td>{pct(sl.capacity ? (sl.booked / sl.capacity) * 100 : 0)}{sl.booked === 0 && <span className="badge"> Sin ocupación</span>}{sl.capacity > 0 && sl.booked >= sl.capacity && <span className="badge badge--off"> Completo</span>}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </td></tr>
+                      )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

@@ -159,7 +159,11 @@ export async function getOccupancyReport(filters = {}) {
     const services = mine.filter((s) => s.isActive && (!filters.serviceId || s.id === filters.serviceId)).map((s) => {
       const booked = mockReservations.filter((r) => r.serviceId === s.id && r.status === "CONFIRMED").length;
       const capacity = Math.max(booked, 7);
-      return { serviceId: s.id, name: s.name, booked, capacity, occupancyPercent: Math.round((booked / capacity) * 1000) / 10 };
+      const slots = [[1, "09:00", "10:00"], [3, "14:00", "15:00"], [5, "16:00", "17:00"]].map(([dayOfWeek, startTime, endTime], i) => {
+        const b = i === 0 ? Math.min(booked, capacity) : 0;
+        return { dayOfWeek, startTime, endTime, capacity: Math.ceil(capacity / 3), booked: Math.min(b, Math.ceil(capacity / 3)), available: Math.ceil(capacity / 3) - Math.min(b, Math.ceil(capacity / 3)) };
+      });
+      return { serviceId: s.id, name: s.name, booked, capacity, occupancyPercent: Math.round((booked / capacity) * 1000) / 10, slots };
     });
     const b = services.reduce((n, s) => n + s.booked, 0);
     const c = services.reduce((n, s) => n + s.capacity, 0);

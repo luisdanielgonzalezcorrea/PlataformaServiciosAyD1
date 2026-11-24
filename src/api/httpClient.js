@@ -38,6 +38,11 @@ httpClient.interceptors.response.use(
   (error) => {
     const data = error?.response?.data;
     const status = error?.response?.status;
+    // Token del proveedor vencido o inválido: se borra la sesión y se envía al login.
+    // (No aplica al login mismo, a las sesiones de cliente ni a un 401 sin esos códigos.)
+    if (status === 401 && !error?.config?.clientAuth && ["AUTH_REQUIRED", "TOKEN_INVALID"].includes(data?.code)) {
+      expireProviderSession();
+    }
     let message = data?.message || data?.error;
     if (!error.response) {
       message = "No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.";
@@ -54,6 +59,19 @@ httpClient.interceptors.response.use(
     });
   }
 );
+
+/** Borra la sesión del proveedor y lleva a /login (una sola vez, y solo si había sesión guardada). */
+export function expireProviderSession() {
+  try {
+    if (!localStorage.getItem(PROVIDER_TOKEN_KEY)) return;
+    localStorage.removeItem(PROVIDER_TOKEN_KEY);
+    localStorage.removeItem("servas_provider");
+    localStorage.removeItem("servas_is_admin");
+  } catch { return; }
+  if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+    window.location.assign("/login?expired=1");
+  }
+}
 
 export function wait(ms = 400) {
   return new Promise((resolve) => setTimeout(resolve, ms));

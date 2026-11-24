@@ -232,7 +232,8 @@ describe("Sprint 3 · contrato completo (proveedor, cliente y admin)", () => {
     ok();
   });
   it("HU-042/043/044 administrador", async () => {
-    await account.getAdminOverview();
+    await account.getAdminOverview("WEEK");
+    await account.getAdminProvider(SVC);
     await account.listAdminProviders({ page: 0, size: 20 });
     await account.adminResetProviderPassword(SVC);
     await account.adminUpdateProviderContact(SVC, { email: "n@c.co", phone: "+573001234567", justification: "Correo mal escrito" });

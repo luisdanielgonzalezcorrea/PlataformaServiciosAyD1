@@ -754,3 +754,15 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .header__provider { display: grid; line-height: 1.2; padding: 0 10px; text-align: right; max-width: 240px; }
 .header__provider strong { font-size: 0.9rem; font-weight: 600; color: var(--tinta); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .header__provider small { font-size: 0.76rem; color: var(--tinta-suave); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Gráfico del panel admin y detalle ---------- */
+.chart { margin: 0; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart__legend { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.86rem; color: var(--tinta-suave); }
+.chart__legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.panel__head .seg { margin-left: auto; }
+.admin-detail__card { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--linea); border-radius: 12px; background: #fcf8ef; margin-bottom: 8px; }
+.admin-detail__card ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.admin-detail__card li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.9rem; }
+.row-detail > td { background: #f8f2e6; padding: 8px 12px; }
+.table--inner { width: 100%; font-size: 0.88rem; }

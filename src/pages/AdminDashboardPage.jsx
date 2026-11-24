@@ -1,15 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getAdminOverview } from "../api/accountService";
+import ReservationsChart from "../components/ReservationsChart";
 
 /**
  * HU-042 · Panel de administración con métricas globales.
- * El back entrega totales (no series por día/semana/mes): las tendencias quedan pendientes (PENDIENTES-BACK.md).
+ * Totales + serie de reservas por día, semana o mes (GET /admin/overview?period=).
  */
+const PERIODS = [["DAY", "Diario"], ["WEEK", "Semanal"], ["MONTH", "Mensual"]];
+
 export default function AdminDashboardPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  useEffect(() => { getAdminOverview().then((r) => setData(r.data)).catch((e) => setError(e.friendlyMessage || "No pudimos cargar el panel.")); }, []);
+  const [period, setPeriod] = useState("MONTH");
+  const [loadingSeries, setLoadingSeries] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    setLoadingSeries(true);
+    getAdminOverview(period)
+      .then((r) => { if (alive) { setData(r.data); setError(null); } })
+      .catch((e) => { if (alive) setError(e.friendlyMessage || "No pudimos cargar el panel."); })
+      .finally(() => { if (alive) setLoadingSeries(false); });
+    return () => { alive = false; };
+  }, [period]);
 
   if (error) return <div className="narrow"><div className="alert alert--error">{error}</div></div>;
   if (!data) return <p className="state muted">Cargando panel…</p>;
@@ -34,6 +47,17 @@ export default function AdminDashboardPage() {
           return c.to ? <Link key={c.label} to={c.to} className="stat-card">{body}</Link> : <div key={c.label} className="stat-card">{body}</div>;
         })}
       </div>
+      <section className="panel" aria-labelledby="adm-trend">
+        <div className="panel__head">
+          <h3 id="adm-trend">Reservas por periodo</h3>
+          <div className="seg" role="group" aria-label="Periodo">
+            {PERIODS.map(([v, t]) => (
+              <button key={v} type="button" className={`seg__opt${period === v ? " seg__opt--on" : ""}`} aria-pressed={period === v} onClick={() => setPeriod(v)}>{t}</button>
+            ))}
+          </div>
+        </div>
+        {loadingSeries && !data.series ? <p className="muted">Cargando…</p> : <ReservationsChart series={data.series || []} period={period} />}
+      </section>
       <section className="panel">
         <h3>Reservas por estado</h3>
         <ul className="bars">

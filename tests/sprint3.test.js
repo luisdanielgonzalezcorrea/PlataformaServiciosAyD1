@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpClient } from "../src/api/httpClient";
 import {
   blockDates, getOccupancyReport, listBlockedDates, listMyServices, unblockDate, listProviderReservations, setServiceActive, updateService,
@@ -257,5 +257,37 @@ describe("Revisiones · calendario de bloqueo y desactivación programada", () =
     expect(withEnd.dates).toHaveLength(3);
     expect(planDeactivation({ mode: "later", from }).plan).toEqual({ type: "until-further", endDate: addDays(from, -1), from });
     expect(planDeactivation({ mode: "later", from, startDate: addDays(from, 3) }).error).toMatch(/vigencia/);
+  });
+});
+
+describe("Sesión vencida (401 del proveedor)", () => {
+  function fakeLocation(path) {
+    const assign = vi.fn();
+    Object.defineProperty(window, "location", { configurable: true, value: { pathname: path, assign } });
+    return assign;
+  }
+  it("borra el token y manda a /login", async () => {
+    localStorage.setItem("servas_token", "viejo");
+    const assign = fakeLocation("/mis-servicios");
+    answerWith(() => ({ status: 401, data: { code: "TOKEN_INVALID", message: "Token inválido" } }));
+    await expect(httpClient.get("/companies")).rejects.toMatchObject({ status: 401 });
+    expect(localStorage.getItem("servas_token")).toBeNull();
+    expect(assign).toHaveBeenCalledWith("/login?expired=1");
+  });
+  it("no redirige en un 401 del login (credenciales inválidas)", async () => {
+    localStorage.setItem("servas_token", "vigente");
+    const assign = fakeLocation("/login");
+    answerWith(() => ({ status: 401, data: { code: "INVALID_CREDENTIALS", message: "Credenciales inválidas" } }));
+    await expect(httpClient.post("/auth/login", {})).rejects.toMatchObject({ status: 401 });
+    expect(localStorage.getItem("servas_token")).toBe("vigente");
+    expect(assign).not.toHaveBeenCalled();
+  });
+  it("no toca la sesión del cliente", async () => {
+    localStorage.setItem("servas_token", "prov");
+    const assign = fakeLocation("/mis-reservas");
+    answerWith(() => ({ status: 401, data: { code: "AUTH_REQUIRED", message: "x" } }));
+    await expect(httpClient.get("/reservations/client/1", { clientAuth: true })).rejects.toBeTruthy();
+    expect(localStorage.getItem("servas_token")).toBe("prov");
+    expect(assign).not.toHaveBeenCalled();
   });
 });

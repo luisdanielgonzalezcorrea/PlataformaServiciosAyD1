@@ -601,7 +601,7 @@ paths:
                 logo:
                   type: string
                   format: binary
-                  description: Imagen PNG o JPEG (máx. 2 MB). Opcional.
+                  description: Imagen PNG, JPEG o WEBP (máx. 2 MB). Opcional.
       responses:
         '201':
           description: Compañía creada.
@@ -674,7 +674,7 @@ paths:
                 logo:
                   type: string
                   format: binary
-                  description: Imagen PNG o JPEG (máx. 2 MB). Si se omite, conserva el logo actual.
+                  description: Imagen PNG, JPEG o WEBP (máx. 2 MB). Si se omite, conserva el logo actual.
       responses:
         '200': { description: Negocio actualizado. }
         '400': { $ref: '#/components/responses/BadRequest' }
@@ -763,6 +763,13 @@ paths:
     get:
       tags: [Maestros & Catálogo]
       summary: Consultar catálogo público de servicios (HU-007, HU-008)
+      description: |
+        Convención de nombres de este endpoint (difiere del resto de la API):
+        - Los filtros de la URL van en camelCase: `comunaId`, `companyId` (no `comuna_id`).
+        - La respuesta va en camelCase, igual que todas las respuestas: `companyName`, `comunaName`,
+          `durationMinutes`, `startDate`, `endDate`, `isActive`.
+        - Los cuerpos de POST/PUT de servicios sí van en snake_case (`company_id`, `duration_minutes`...).
+        Solo devuelve servicios activos; para ver también los inactivos del proveedor use `GET /provider/services`.
       parameters:
         - name: comunaId
           in: query
@@ -1118,7 +1125,10 @@ paths:
           schema: { type: string, format: date }
       responses:
         '200':
-          description: Horarios disponibles calculados automáticamente tras evaluar bloqueos y reservas.
+          description: |
+            Franjas libres del día, en orden. Es una lista plana de objetos con la hora de inicio y fin
+            en formato `HH:mm` (sin fecha ni cupos). Lista vacía si no hay franjas libres. Ejemplo:
+            `[{"startTime":"09:00","endTime":"10:00"},{"startTime":"10:00","endTime":"11:00"}]`
           content:
             application/json:
               schema:
@@ -1619,6 +1629,21 @@ paths:
                         booked: { type: integer, example: 5 }
                         capacity: { type: integer, example: 12 }
                         occupancyPercent: { type: number, example: 41.67 }
+                        slots:
+                          type: array
+                          description: |
+                            Detalle por horario (HU-039): una fila por franja semanal (día y hora). `capacity`
+                            es el cupo del servicio por cada vez que ese día cae en el rango from_date..to_date
+                            (sin rango, el cupo de una semana). `booked` cuenta las reservas activas de esa franja.
+                          items:
+                            type: object
+                            properties:
+                              dayOfWeek: { type: integer, minimum: 1, maximum: 7, description: "1 = lunes ... 7 = domingo" }
+                              startTime: { type: string, example: "09:00" }
+                              endTime: { type: string, example: "10:00" }
+                              capacity: { type: integer, example: 12 }
+                              booked: { type: integer, example: 5 }
+                              available: { type: integer, example: 7 }
                   overallPercent: { type: number, example: 41.67 }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/AuthRequired' }
@@ -1678,7 +1703,21 @@ paths:
         Tablero de solo lectura para el rol Administrador. Cuenta proveedores, negocios, servicios
         (totales y activos), clientes y reservas por estado. No expone datos personales ni permite
         operar sobre los recursos de los proveedores.
+        Incluye `series`: reservas agrupadas por día, semana (inicia el lunes) o mes según la fecha de la
+        cita, con todos los periodos del rango aunque estén en cero, listas para graficar (HU-042).
+        Sin fechas, el rango es: DAY = últimos 30 días, WEEK = últimas 12 semanas, MONTH = últimos 12 meses.
       security: [{ bearerAuth: [] }]
+      parameters:
+        - name: period
+          in: query
+          schema: { type: string, enum: [DAY, WEEK, MONTH], default: MONTH }
+        - name: from_date
+          in: query
+          schema: { type: string, format: date }
+        - name: to_date
+          in: query
+          description: Si precede a from_date o el rango supera 400 periodos, 400 INVALID_PARAMETER.
+          schema: { type: string, format: date }
       responses:
         '200':
           description: Métricas agregadas.
@@ -1700,6 +1739,21 @@ paths:
                       confirmed: { type: integer }
                       cancelled: { type: integer }
                       completed: { type: integer }
+                  period: { type: string, enum: [DAY, WEEK, MONTH] }
+                  fromDate: { type: string, format: date }
+                  toDate: { type: string, format: date }
+                  series:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        start: { type: string, format: date, description: "Primer día del periodo." }
+                        total: { type: integer }
+                        pending: { type: integer }
+                        confirmed: { type: integer }
+                        cancelled: { type: integer }
+                        completed: { type: integer }
+        '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/AuthRequired' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
@@ -1734,13 +1788,78 @@ paths:
                         email: { type: string, format: email }
                         phone: { type: string }
                         verified: { type: boolean }
-                        companies: { type: integer }
+                        companies: { type: integer, description: Número de negocios. }
+                        nit: { type: string, nullable: true, description: NIT del primer negocio (orden alfabético). }
+                        businesses:
+                          type: array
+                          items: { $ref: '#/components/schemas/AdminBusiness' }
+                        categories:
+                          type: array
+                          description: Categorías distintas de sus servicios.
+                          items: { type: string }
+                        comunas:
+                          type: array
+                          description: Comunas distintas de sus servicios presenciales.
+                          items: { type: string }
                   page: { type: integer }
                   size: { type: integer }
                   totalElements: { type: integer }
                   totalPages: { type: integer }
         '401': { $ref: '#/components/responses/AuthRequired' }
         '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/providers/{id}:
+    get:
+      tags: [Administración]
+      summary: Detalle de un proveedor con sus negocios y servicios (HU-043)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Mismos campos del listado, más documento y servicios (activos e inactivos).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  firstName: { type: string }
+                  lastName: { type: string }
+                  email: { type: string, format: email }
+                  phone: { type: string }
+                  verified: { type: boolean }
+                  companies: { type: integer }
+                  nit: { type: string, nullable: true }
+                  businesses:
+                    type: array
+                    items: { $ref: '#/components/schemas/AdminBusiness' }
+                  categories: { type: array, items: { type: string } }
+                  comunas: { type: array, items: { type: string } }
+                  documentType: { type: string }
+                  documentNumber: { type: string }
+                  services:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        name: { type: string }
+                        companyId: { type: string, format: uuid }
+                        companyName: { type: string }
+                        category: { type: string }
+                        modality: { type: string, enum: [VIRTUAL, PRESENCIAL] }
+                        comunaName: { type: string, nullable: true }
+                        cost: { type: number }
+                        durationMinutes: { type: integer }
+                        capacity: { type: integer }
+                        isActive: { type: boolean }
+        '401': { $ref: '#/components/responses/AuthRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /admin/providers/{id}/password-reset:
     post:
@@ -1844,6 +1963,14 @@ components:
         phone: { type: string, description: "Se comparan solo los dígitos; acepta el indicativo +57." }
         reservation_code: { type: string, example: "RSV-1A2B3C4D" }
         new_email: { type: string, format: email }
+
+    AdminBusiness:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        nit: { type: string }
+        address: { type: string }
 
     BlockedDateView:
       type: object
@@ -1995,7 +2122,7 @@ components:
             regla:
               value: { code: OUTSIDE_ATTENTION_HOURS, message: "La franja está fuera del horario de atención." }
             logoInvalido:
-              value: { code: INVALID_LOGO, message: "El logo debe ser una imagen PNG o JPEG." }
+              value: { code: INVALID_LOGO, message: "El logo debe ser una imagen PNG, JPEG o WEBP." }
 
     AuthRequired:
       description: |

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const expired = params.get("expired") === "1";
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -37,6 +39,7 @@ export default function LoginPage() {
         <h1>Portal proveedores</h1>
         <p className="muted">Inicia sesión para administrar tus servicios y reservas.</p>
 
+        {expired && !error && <div className="alert alert--info" role="status">Tu sesión venció. Inicia sesión de nuevo para continuar.</div>}
         {error && <div className="alert alert--error">{error}</div>}
 
         <label className="field">
