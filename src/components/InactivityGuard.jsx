@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { watchInactivity } from "../utils/inactivity";
 
-/** Cierra la sesión del proveedor/admin tras 5 minutos sin actividad y lo manda a /login. */
+/** Cierra la sesión del proveedor/admin tras 3 minutos sin actividad y lo manda a /login. */
 export default function InactivityGuard() {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();

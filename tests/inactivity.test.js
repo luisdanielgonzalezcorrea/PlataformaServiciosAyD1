@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { INACTIVITY_MS, watchInactivity } from "../src/utils/inactivity";
 
-describe("Cierre por inactividad (5 minutos)", () => {
+describe("Cierre por inactividad (3 minutos)", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it("cierra la sesión a los 5 minutos sin actividad", () => {
+  it("cierra la sesión a los 3 minutos sin actividad", () => {
     const out = vi.fn();
     watchInactivity(out);
     vi.advanceTimersByTime(INACTIVITY_MS - 1000);

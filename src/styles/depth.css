@@ -759,17 +759,40 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .chart { margin: 0; }
 .chart__summary { margin: 0 0 14px; color: var(--tinta-suave); font-size: 0.95rem; }
 .chart__summary strong { color: var(--tinta); font-size: 1.15rem; }
-.chart__bars { display: flex; align-items: stretch; gap: 8px; height: 250px; padding: 0 2px; }
+.chart__wrap { position: relative; padding-left: 30px; }
+.chart__grid { position: absolute; left: 30px; right: 0; top: 22px; bottom: 44px; pointer-events: none; }
+.chart__grid span { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--linea); }
+.chart__grid span.is-zero { border-top: 1px solid #cdbb9c; }
+.chart__grid em { position: absolute; left: -30px; top: -9px; width: 24px; text-align: right; font-style: normal; font-size: 0.75rem; color: var(--tinta-suave); }
+.chart__bars { position: relative; display: flex; align-items: stretch; gap: 8px; height: 270px; }
 .chart__bars--dense { gap: 3px; }
 .chart__col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: stretch; background: transparent; border: 0; padding: 0; font: inherit; color: var(--tinta); cursor: pointer; border-radius: 6px; }
 .chart__col:focus-visible { outline: 2px solid var(--selva); outline-offset: 2px; }
+.chart__col:hover { background: rgba(92, 26, 51, 0.05); }
 .chart__val { height: 22px; line-height: 22px; text-align: center; font-weight: 700; font-size: 0.9rem; }
-.chart__track { flex: 1; display: flex; align-items: flex-end; justify-content: center; border-bottom: 1px solid var(--linea); }
-.chart__bar { display: block; width: 100%; max-width: 44px; background: #d9c3cc; border-radius: 6px 6px 0 0; transition: background 0.15s; }
+.chart__track { flex: 1; display: flex; align-items: flex-end; justify-content: center; }
+.chart__bar { display: block; width: 100%; max-width: 44px; background: #d9c3cc; border-radius: 5px 5px 0 0; transition: background 0.15s; }
 .chart__col.is-peak .chart__bar { background: #b98a9a; }
 .chart__col.is-on .chart__bar { background: var(--selva); }
-.chart__tick { height: 26px; line-height: 26px; text-align: center; font-size: 0.78rem; color: var(--tinta-suave); white-space: nowrap; overflow: visible; }
+.chart__tick { height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; overflow: hidden; }
+.chart__tick b { font-size: 0.82rem; font-weight: 600; white-space: nowrap; }
+.chart__tick small { font-size: 0.72rem; color: var(--tinta-suave); white-space: nowrap; text-transform: capitalize; }
+.chart__bars--dense .chart__tick b { font-size: 0.74rem; }
+.chart__bars--dense .chart__tick small { font-size: 0.66rem; }
 .chart__detail { margin: 14px 0 0; padding: 12px 14px; background: var(--niebla); border: 1px solid var(--linea); border-radius: 10px; font-size: 0.95rem; }
+@media (max-width: 640px) {
+  .chart__bars--dense .chart__col:not(:nth-child(5n+1)) .chart__tick { visibility: hidden; }
+  .chart__bars--dense .chart__tick { overflow: visible; }
+  .chart__bars--dense .chart__tick b { font-size: 0.72rem; }
+  .chart__bars--dense .chart__tick small { font-size: 0.64rem; }
+  .chart__bars:not(.chart__bars--dense) { gap: 4px; }
+  .chart__tick { overflow: visible; }
+  .chart__tick b { font-size: 0.66rem; letter-spacing: -0.02em; }
+  .chart__tick small { font-size: 0.6rem; }
+  .panel__head:has(.seg) { flex-wrap: wrap; gap: 10px; }
+  .panel__head .seg { margin-left: 0; flex-wrap: nowrap; }
+  .panel__head .seg .seg__opt { padding: 7px 13px; }
+}
 .panel__head .seg { margin-left: auto; }
 .admin-detail__card { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--linea); border-radius: 12px; background: #fcf8ef; margin-bottom: 8px; }
 .admin-detail__card ul { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }

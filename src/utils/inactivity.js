@@ -1,5 +1,5 @@
-/** Minutos sin actividad antes de cerrar la sesión del proveedor. */
-export const INACTIVITY_MS = 5 * 60 * 1000;
+/** Tiempo sin actividad antes de cerrar la sesión del proveedor. */
+export const INACTIVITY_MS = 3 * 60 * 1000;
 const EVENTS = ["click", "keydown", "scroll", "touchstart"];
 
 /**

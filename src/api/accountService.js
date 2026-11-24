@@ -157,7 +157,7 @@ export async function getAdminOverview(period = "MONTH") {
   if (USE_MOCKS) {
     await wait(250);
     const by = (st) => reservations.filter((r) => r.status === st).length;
-    const n = period === "DAY" ? 14 : period === "WEEK" ? 8 : 6;
+    const n = period === "DAY" ? 30 : period === "WEEK" ? 8 : 6;
     const today = new Date();
     const series = Array.from({ length: n }, (_, i) => {
       const d = new Date(today);
