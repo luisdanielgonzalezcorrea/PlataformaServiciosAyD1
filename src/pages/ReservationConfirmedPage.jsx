@@ -3,6 +3,8 @@ import { CheckSeal } from "../components/Icons";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { reservationCode } from "../api/reservationService";
 import { formatLongDate, formatTime } from "../utils/dates";
+import { buildIcs, downloadIcs } from "../utils/ics";
+import { useToast } from "../components/Toast";
 
 /**
  * HU-029 · Confirmación de registro
@@ -12,6 +14,7 @@ import { formatLongDate, formatTime } from "../utils/dates";
  */
 export default function ReservationConfirmedPage() {
   const { state } = useLocation();
+  const toast = useToast();
 
   useEffect(() => {
     // El ticket aparece arriba de todo, sin heredar el scroll del paso anterior.
@@ -26,6 +29,20 @@ export default function ReservationConfirmedPage() {
 
   const { reservation, service, client } = state;
   const code = reservationCode(reservation);
+
+  function addToCalendar() {
+    const ics = buildIcs({
+      uid: code,
+      title: `${service.name} · ${service.companyName}`,
+      description: `Reserva ${code}. A nombre de ${client.firstName} ${client.lastName}.`,
+      location: service.address || service.comunaName || (service.modality === "VIRTUAL" ? "Virtual" : ""),
+      date: reservation.reservationDate,
+      startTime: reservation.startTime,
+      endTime: reservation.endTime,
+    });
+    downloadIcs(`reserva-${code}.ics`, ics);
+    toast.success("Descargamos el evento. Ábrelo para agregarlo a tu calendario.");
+  }
 
   return (
     <div className="ticket">
@@ -54,7 +71,8 @@ export default function ReservationConfirmedPage() {
         </div>
 
         <div className="actions actions--center">
-          <Link className="btn btn--primary" to="/mis-reservas">Ver mis reservas</Link>
+          <button type="button" className="btn btn--primary" onClick={addToCalendar}>Agregar a mi calendario</button>
+          <Link className="btn btn--ghost" to="/mis-reservas">Ver mis reservas</Link>
           <Link className="btn btn--ghost" to="/">Volver al catálogo</Link>
         </div>
       </div>

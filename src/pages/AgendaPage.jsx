@@ -1,3 +1,5 @@
+import { useToast } from "../components/Toast";
+import { SkeletonList } from "../components/Skeleton";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { getServiceById, updateServiceRange } from "../api/catalogService";
@@ -54,7 +56,7 @@ export default function AgendaPage() {
       .catch((err) => setError(err.friendlyMessage));
   }, [selectedId]);
 
-  if (loading) return <p className="center muted">Cargando tus servicios…</p>;
+  if (loading) return <SkeletonList n={3} label="Cargando tus servicios" />;
 
   if (noCompany) {
     return (
@@ -120,12 +122,11 @@ function RangeCard({ service, onSaved }) {
   const [startDate, setStartDate] = useState(service.startDate || "");
   const [endDate, setEndDate] = useState(service.endDate || "");
   const [error, setError] = useState(null);
-  const [ok, setOk] = useState(null);
+  const toast = useToast();
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e) {
     e.preventDefault();
-    setOk(null);
     const rangeError = validateDateRange(startDate, endDate);
     if (rangeError) {
       setError(rangeError);
@@ -141,7 +142,7 @@ function RangeCard({ service, onSaved }) {
     try {
       const { data } = await updateServiceRange(service.id, { startDate, endDate });
       onSaved(data);
-      setOk("Guardamos la vigencia del servicio.");
+      toast.success("Guardamos la vigencia del servicio.");
     } catch (err) {
       setError(err.friendlyMessage || "No se pudo guardar la vigencia.");
     } finally {
@@ -156,7 +157,6 @@ function RangeCard({ service, onSaved }) {
         El servicio solo se puede reservar dentro de este rango. Si dejas las fechas vacías, no tiene límite.
       </p>
       {error && <div className="alert alert--error">{error}</div>}
-      {ok && <div className="alert alert--success">{ok}</div>}
       <div className="form-grid">
         <label className="field">
           <span>Fecha de inicio</span>

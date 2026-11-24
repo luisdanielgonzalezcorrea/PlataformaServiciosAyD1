@@ -1,3 +1,4 @@
+import { useToast } from "../components/Toast";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getCategories, getComunas, getServiceById } from "../api/catalogService";
@@ -15,7 +16,7 @@ export default function EditServicePage() {
   const [errors, setErrors] = useState({});
   const [loadError, setLoadError] = useState(null);
   const [error, setError] = useState(null);
-  const [ok, setOk] = useState(false);
+  const toast = useToast();
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -33,20 +34,18 @@ export default function EditServicePage() {
   function set(field, value) {
     setForm((f) => ({ ...f, [field]: value }));
     setErrors((e) => ({ ...e, [field]: undefined }));
-    setOk(false);
   }
 
   async function submit(e) {
     e.preventDefault();
     setError(null);
-    setOk(false);
     const local = validateServiceForm(form);
     setErrors(local);
     if (Object.keys(local).length) return;
     setSaving(true);
     try {
       await updateService(id, form);
-      setOk(true);
+      toast.success("Cambios guardados. Ya los ven tus clientes en el catálogo.");
     } catch (err) {
       setErrors(fieldsToErrors(err.fields));
       setError(err.friendlyMessage || "No se pudieron guardar los cambios.");
@@ -64,7 +63,6 @@ export default function EditServicePage() {
       <form className="card form-card" onSubmit={submit} noValidate>
         <h1>Editar servicio</h1>
         {error && <div className="alert alert--error">{error}</div>}
-        {ok && <div className="alert alert--success">Cambios guardados. Ya los ven tus clientes en el catálogo.</div>}
         <div className="form-grid">
           <label className="field field--full"><span>Título</span>
             <input value={form.name} maxLength={100} onChange={(e) => set("name", e.target.value)} aria-invalid={!!errors.name} />{err("name")}</label>

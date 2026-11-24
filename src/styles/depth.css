@@ -675,14 +675,14 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
   color: #fff;
 }
 
-/* Banner de login/registro: sello del logo en dorado tenue, y fondo degradado */
+/* Banner de login/registro: sello dorado macizo (rosetón con check) sobre fondo degradado */
 .auth-page::before {
   background-color: transparent;
   background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='170' height='170' viewBox='0 0 64 64' fill='none' stroke='%23d1a94e' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='6' y='10' width='52' height='48' rx='10'/%3E%3Cpath d='M20 4v10M44 4v10M6 24h52'/%3E%3Cpath d='M21 41l8 8 15-16'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 120 120'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f3dc9c'/%3E%3Cstop offset='.55' stop-color='%23d1a94e'/%3E%3Cstop offset='1' stop-color='%23a87a22'/%3E%3C/linearGradient%3E%3ClinearGradient id='d' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%234a1429'/%3E%3Cstop offset='1' stop-color='%232b0a17'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M60.00,6.00 Q60.00,6.00 63.75,9.30 Q67.51,12.59 72.10,10.62 Q76.69,8.64 79.24,12.94 Q81.79,17.23 86.77,16.77 Q91.74,16.31 92.84,21.19 Q93.94,26.06 98.81,27.16 Q103.69,28.26 103.23,33.23 Q102.77,38.21 107.06,40.76 Q111.36,43.31 109.38,47.90 Q107.41,52.49 110.70,56.25 Q114.00,60.00 110.70,63.75 Q107.41,67.51 109.38,72.10 Q111.36,76.69 107.06,79.24 Q102.77,81.79 103.23,86.77 Q103.69,91.74 98.81,92.84 Q93.94,93.94 92.84,98.81 Q91.74,103.69 86.77,103.23 Q81.79,102.77 79.24,107.06 Q76.69,111.36 72.10,109.38 Q67.51,107.41 63.75,110.70 Q60.00,114.00 56.25,110.70 Q52.49,107.41 47.90,109.38 Q43.31,111.36 40.76,107.06 Q38.21,102.77 33.23,103.23 Q28.26,103.69 27.16,98.81 Q26.06,93.94 21.19,92.84 Q16.31,91.74 16.77,86.77 Q17.23,81.79 12.94,79.24 Q8.64,76.69 10.62,72.10 Q12.59,67.51 9.30,63.75 Q6.00,60.00 9.30,56.25 Q12.59,52.49 10.62,47.90 Q8.64,43.31 12.94,40.76 Q17.23,38.21 16.77,33.23 Q16.31,28.26 21.19,27.16 Q26.06,26.06 27.16,21.19 Q28.26,16.31 33.23,16.77 Q38.21,17.23 40.76,12.94 Q43.31,8.64 47.90,10.62 Q52.49,12.59 56.25,9.30Z' fill='url(%23g)'/%3E%3Ccircle cx='60' cy='60' r='41' fill='none' stroke='%238a6420' stroke-width='1.6' opacity='.55'/%3E%3Ccircle cx='60' cy='60' r='37' fill='url(%23d)'/%3E%3Ccircle cx='60' cy='60' r='33' fill='none' stroke='%23d1a94e' stroke-width='1.2' opacity='.7'/%3E%3Cpath d='M42 61l13 13 24-27' fill='none' stroke='url(%23g)' stroke-width='8.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"),
     radial-gradient(620px 300px at 85% 0%, rgba(209, 169, 78, 0.28), transparent 62%),
     var(--grad-selva);
-  background-size: 170px 170px, auto, auto;
+  background-size: 150px 150px, auto, auto;
   background-repeat: no-repeat;
   background-position: right max(24px, calc(50vw - 520px)) top 28px, 0 0, 0 0;
   opacity: 1;
@@ -719,7 +719,7 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 @media (max-width: 640px) {
   /* El sello grande queda cortado detrás de la tarjeta: más pequeño y arriba a la derecha */
   .auth-page::before {
-    background-size: 56px 56px, auto, auto;
+    background-size: 64px 64px, auto, auto;
     background-position: right 20px top 14px, 0 0, 0 0;
   }
 }
@@ -799,3 +799,73 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
 .admin-detail__card li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.9rem; }
 .row-detail > td { background: #f8f2e6; padding: 8px 12px; }
 .table--inner { width: 100%; font-size: 0.88rem; }
+
+/* =====================================================================
+   Capa 5 · acabado: skeletons, avisos, estados vacíos, chips, reserva
+   Solo paleta vino / dorado / marfil, con texto en tinta sobre fondos claros.
+   ===================================================================== */
+
+/* ---------- Skeletons ---------- */
+.sk { display: block; background: linear-gradient(90deg, #efe6d3 0%, #f8f1e1 50%, #efe6d3 100%); background-size: 220% 100%; border-radius: 8px; animation: sk-shimmer 1.4s ease-in-out infinite; }
+.sk--line { height: 14px; max-width: 100%; }
+.sk--pill { width: 74px; height: 24px; border-radius: 999px; }
+.sk--btn { width: 112px; height: 40px; border-radius: 12px; }
+.sk--block { width: 100%; border-radius: 16px; }
+.sk-card { display: flex; flex-direction: column; gap: 12px; padding: 26px 22px 22px; background: var(--papel); border: 1px solid var(--linea); border-radius: 18px; box-shadow: var(--sombra-card, 0 8px 24px -18px rgba(60, 18, 36, 0.4)); }
+.sk-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sk-row--foot { margin-top: 10px; padding-top: 16px; border-top: 1px dashed var(--linea); }
+.sk-list { display: grid; gap: 12px; }
+.sk-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; background: var(--papel); border: 1px solid var(--linea); border-radius: 16px; }
+.sk-item__main { display: grid; gap: 10px; flex: 1; }
+@keyframes sk-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+/* ---------- Avisos (toasts) ---------- */
+.toasts { position: fixed; z-index: 1000; right: 20px; bottom: 20px; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 12px; padding: 14px 14px 14px 16px; border-radius: 14px; background: #2b0a17; color: #f7f2e8; border: 1px solid #5c1a33; border-left: 5px solid #d1a94e; box-shadow: 0 18px 40px -16px rgba(43, 10, 23, 0.7); animation: toast-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.toast__icon { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 0.85rem; background: #d1a94e; color: #2b0a17; }
+.toast__text { flex: 1; font-size: 0.95rem; line-height: 1.4; padding-top: 2px; }
+.toast__close { flex: none; border: 0; background: transparent; color: #f7f2e8; font-size: 1.4rem; line-height: 1; cursor: pointer; padding: 0 4px; border-radius: 6px; }
+.toast__close:hover { background: rgba(247, 242, 232, 0.14); }
+.toast__close:focus-visible { outline: 2px solid #d1a94e; outline-offset: 2px; }
+.toast--error { background: #fffdf9; color: #26171d; border-color: #a3281f; border-left-color: #a3281f; }
+.toast--error .toast__icon { background: #a3281f; color: #fff; }
+.toast--error .toast__close { color: #26171d; }
+.toast--error .toast__close:hover { background: #f7e2de; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(14px) scale(0.98); } to { opacity: 1; transform: none; } }
+@media (max-width: 640px) { .toasts { right: 16px; left: 16px; width: auto; bottom: 16px; } }
+
+/* ---------- Estados vacíos ---------- */
+.empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 44px 20px; background: var(--papel); border: 1px dashed #cdbb9c; border-radius: 22px; }
+.empty h3 { margin: 10px 0 0; font-family: var(--font-display); color: var(--tinta); }
+.empty p { margin: 0; max-width: 40ch; }
+.empty__action { margin-top: 14px; }
+.empty__bg { fill: #f6ecd2; }
+.empty__lines { fill: none; stroke: #5c1a33; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.empty__spark { fill: #d1a94e; }
+
+/* ---------- Tarjetas del catálogo: chips y precio ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 10px 0 12px; padding: 0; }
+.chip { padding: 4px 11px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; background: #f6ecd2; color: #6b4a0a; border: 1px solid #e4d19a; }
+.chip--place { background: #fffdf9; color: #5c1a33; border-color: #d9c3cc; }
+.svc-card__price { display: inline-flex; align-items: baseline; font-family: var(--font-display); font-size: 1.45rem; font-weight: 700; color: #5c1a33; }
+.svc-card__foot .btn--primary { box-shadow: 0 10px 20px -12px rgba(92, 26, 51, 0.8); }
+.svc-card:hover .btn--primary { background: #461327; }
+
+/* ---------- Reserva: resumen fijo a la derecha en pantallas anchas ---------- */
+.service-mini { background: linear-gradient(180deg, #fffdf9, #f6ecd2); border: 1px solid #e4d19a; border-left: 6px solid #d1a94e; }
+.service-mini__list { margin: 12px 0 0; display: grid; gap: 8px; }
+.service-mini__list > div { display: flex; justify-content: space-between; gap: 12px; font-size: 0.93rem; }
+.service-mini__list dt { color: #6a5a60; }
+.service-mini__list dd { margin: 0; font-weight: 600; text-align: right; color: #26171d; }
+.service-mini__total { padding-top: 10px; border-top: 1px dashed #cdbb9c; }
+.service-mini__total dd { font-family: var(--font-display); font-size: 1.2rem; color: #5c1a33; }
+@media (min-width: 980px) {
+  .reserve { max-width: 1060px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px 24px; align-items: start; }
+  .reserve > * { grid-column: 1; }
+  .reserve > .stepper { grid-column: 1 / -1; }
+  .reserve > .service-mini { grid-column: 2; grid-row: 2 / span 12; position: sticky; top: 96px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk, .toast { animation: none; }
+}

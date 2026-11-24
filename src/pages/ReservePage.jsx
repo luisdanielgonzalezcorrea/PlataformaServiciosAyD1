@@ -308,11 +308,15 @@ export default function ReservePage() {
         ))}
       </ol>
 
-      <aside className="card service-mini">
+      <aside className="card service-mini" aria-label="Resumen de tu reserva">
         <strong>{service.name}</strong>
-        <span className="muted small">
-          {service.companyName} · {service.durationMinutes} min · ${Number(service.cost).toLocaleString("es-CO")}
-        </span>
+        <span className="muted small">{service.companyName}</span>
+        <dl className="service-mini__list">
+          <div><dt>Duración</dt><dd>{service.durationMinutes} min</dd></div>
+          <div><dt>Fecha</dt><dd>{slot?.startTime ? formatLongDate(slot.date) : "Por elegir"}</dd></div>
+          <div><dt>Hora</dt><dd>{slot?.startTime ? formatTime(slot.startTime) : "Por elegir"}</dd></div>
+          <div className="service-mini__total"><dt>Total</dt><dd>${Number(service.cost).toLocaleString("es-CO")}</dd></div>
+        </dl>
       </aside>
 
       {banner && <div className={`alert alert--${banner.type === "error" ? "error" : banner.type === "success" ? "success" : "info"}`}>{banner.text}</div>}

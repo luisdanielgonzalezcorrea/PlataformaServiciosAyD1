@@ -1,4 +1,7 @@
+import { SkeletonList } from "../components/Skeleton";
 import { useEffect, useMemo, useState } from "react";
+import { useToast } from "../components/Toast";
+import { resendVerificationCode } from "../api/authService";
 import { adminResetProviderPassword, adminUpdateProviderContact, getAdminProvider, listAdminProviders } from "../api/accountService";
 
 /**
@@ -18,6 +21,7 @@ export default function AdminProvidersPage() {
   const [busy, setBusy] = useState(false);
   const [askReset, setAskReset] = useState(false);
   const [detail, setDetail] = useState(null);
+  const toast = useToast();
 
   useEffect(() => { listAdminProviders().then((r) => setItems(r.data.items)).catch((e) => { setItems([]); setError(e.friendlyMessage || "No pudimos cargar los proveedores."); }); }, []);
 
@@ -40,8 +44,17 @@ export default function AdminProvidersPage() {
     setBusy(true); setAskReset(false);
     try {
       const { data } = await adminResetProviderPassword(selected.id);
-      setNotice({ type: "success", text: `Enviamos el enlace de restablecimiento a ${data?.email || selected.email}. Vence en 30 minutos.` });
+      toast.success(`Enviamos el enlace de restablecimiento a ${data?.email || selected.email}. Vence en 30 minutos.`);
     } catch (err) { setNotice({ type: "error", text: err.friendlyMessage || "No se pudo restablecer." }); }
+    finally { setBusy(false); }
+  }
+
+  async function resendVerification() {
+    setBusy(true); setNotice(null);
+    try {
+      await resendVerificationCode(selected.email);
+      toast.success(`Reenviamos la verificación a ${selected.email}. El código anterior dejó de servir.`);
+    } catch (err) { setNotice({ type: "error", text: err.friendlyMessage || "No se pudo reenviar la verificación." }); }
     finally { setBusy(false); }
   }
 
@@ -59,7 +72,7 @@ export default function AdminProvidersPage() {
       setSelected(updated);
       setItems((list) => list.map((x) => (x.id === updated.id ? { ...x, ...updated } : x)));
       setContact({ email: updated.email || "", phone: updated.phone || "", justification: "" });
-      setNotice({ type: "success", text: "Actualizamos el contacto. Avisamos al proveedor por correo." });
+      toast.success("Actualizamos el contacto. Avisamos al proveedor por correo.");
     } catch (err) { setNotice({ type: "error", text: err.friendlyMessage || "No se pudo actualizar." }); }
     finally { setBusy(false); }
   }
@@ -76,7 +89,7 @@ export default function AdminProvidersPage() {
               <select value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="ALL">Todos</option><option value="VERIFIED">Verificados</option><option value="PENDING">Pendientes de verificar</option></select></label>
           </div>
-          {items === null && <p className="state muted">Cargando…</p>}
+          {items === null && <SkeletonList n={5} label="Cargando proveedores" />}
           {items && shown.length === 0 && <p className="muted">No hay proveedores con esos filtros.</p>}
           {shown.length > 0 && (
             <div className="table-wrap">
@@ -109,7 +122,7 @@ export default function AdminProvidersPage() {
             {notice && <div className={`alert alert--${notice.type === "error" ? "error" : "success"}`} role="status">{notice.text}</div>}
 
             <h4>Negocios y servicios</h4>
-            {detail === null && <p className="muted small">Cargando…</p>}
+            {detail === null && <SkeletonList n={2} label="Cargando detalle" />}
             {detail === false && <p className="muted small">No pudimos cargar el detalle.</p>}
             {detail && (
               <div className="admin-detail__biz">
@@ -130,6 +143,14 @@ export default function AdminProvidersPage() {
                   </div>
                 ))}
               </div>
+            )}
+
+            {!selected.verified && (
+              <>
+                <h4>Verificación del correo</h4>
+                <p className="muted small">Este proveedor aún no verifica su correo, así que no puede iniciar sesión.</p>
+                <button type="button" className="btn btn--primary" disabled={busy} onClick={resendVerification}>Reenviar enlace de verificación</button>
+              </>
             )}
 
             <h4>Contraseña</h4>

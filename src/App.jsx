@@ -1,4 +1,7 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import NotFoundPage from "./pages/NotFoundPage";
+import { titleFor } from "./utils/pageTitle";
 import Header from "./components/Header";
 import InactivityGuard from "./components/InactivityGuard";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -25,11 +28,18 @@ import RecoverEmailPage from "./pages/RecoverEmailPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminProvidersPage from "./pages/AdminProvidersPage";
 
+function TitleManager() {
+  const { pathname } = useLocation();
+  useEffect(() => { document.title = titleFor(pathname); }, [pathname]);
+  return null;
+}
+
 export default function App() {
   return (
     <div className="app">
       <Header />
       <InactivityGuard />
+      <TitleManager />
       <main className="app__main">
         <Routes>
           {/* HU-008 / HU-009 · Catálogo y detalle de servicio */}
@@ -96,6 +106,7 @@ export default function App() {
           {/* Sprint 3 · Administración (042 a 044) */}
           <Route path="/admin" element={<ProtectedRoute admin><AdminDashboardPage /></ProtectedRoute>} />
           <Route path="/admin/proveedores" element={<ProtectedRoute admin><AdminProvidersPage /></ProtectedRoute>} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
     </div>

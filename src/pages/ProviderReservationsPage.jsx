@@ -1,3 +1,5 @@
+import { SkeletonList } from "../components/Skeleton";
+import EmptyState from "../components/EmptyState";
 import { useCallback, useEffect, useState } from "react";
 import { listMyServices, listProviderReservations } from "../api/providerService";
 import { formatLongDate, formatTime } from "../utils/dates";
@@ -67,9 +69,9 @@ export default function ProviderReservationsPage() {
 
       {rangeError && <div className="alert alert--error">{rangeError}</div>}
       {error && <div className="alert alert--error">{error} <button type="button" className="link-btn" onClick={load}>Reintentar</button></div>}
-      {!data && !error && !rangeError && <p className="state muted">Cargando reservas…</p>}
+      {!data && !error && !rangeError && <SkeletonList n={5} label="Cargando reservas" />}
 
-      {data && data.items.length === 0 && <div className="panel center"><p>No hay reservas para estos filtros.</p></div>}
+      {data && data.items.length === 0 && <EmptyState icon="calendar" title="No hay reservas para estos filtros">Cambia las fechas o el estado para ver otras reservas.</EmptyState>}
 
       {data && data.items.length > 0 && (
         <>

@@ -1,3 +1,4 @@
+import { SkeletonStats, SkeletonBlock } from "../components/Skeleton";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getAdminOverview } from "../api/accountService";
@@ -25,7 +26,7 @@ export default function AdminDashboardPage() {
   }, [period]);
 
   if (error) return <div className="narrow"><div className="alert alert--error">{error}</div></div>;
-  if (!data) return <p className="state muted">Cargando panel…</p>;
+  if (!data) return <div className="page-wide"><h1>Panel de administración</h1><SkeletonStats /><SkeletonBlock h={300} /></div>;
 
   const res = data.reservations || {};
   const cards = [
@@ -56,7 +57,7 @@ export default function AdminDashboardPage() {
             ))}
           </div>
         </div>
-        {loadingSeries && !data.series ? <p className="muted">Cargando…</p> : <ReservationsChart series={data.series || []} period={period} />}
+        {loadingSeries && !data.series ? <SkeletonBlock h={280} /> : <ReservationsChart series={data.series || []} period={period} />}
       </section>
       <section className="panel">
         <h3>Reservas por estado</h3>

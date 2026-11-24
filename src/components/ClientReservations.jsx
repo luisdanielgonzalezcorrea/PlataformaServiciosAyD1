@@ -1,3 +1,5 @@
+import { SkeletonList } from "./Skeleton";
+import EmptyState from "./EmptyState";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { listAllReservations } from "../api/reservationService";
@@ -69,8 +71,8 @@ export default function ClientReservations({ documentNumber, onSessionExpired })
       </div>
 
       {error && <div className="alert alert--error">{error} <button type="button" className="link-btn" onClick={load}>Reintentar</button></div>}
-      {items === null && <p className="muted">Cargando tus reservas…</p>}
-      {items && !error && items.length === 0 && <p className="muted">No encontramos reservas para este documento.</p>}
+      {items === null && <SkeletonList n={3} label="Cargando tus reservas" />}
+      {items && !error && items.length === 0 && <EmptyState icon="calendar" title="Aún no tienes reservas" action={<Link to="/" className="btn btn--primary">Ver servicios</Link>}>No encontramos reservas para este documento.</EmptyState>}
       {items?.length > 0 && shown.length === 0 && <p className="muted">{tab === "active" ? "No tienes reservas activas con estos filtros." : "No hay reservas en tu historial con estos filtros."}</p>}
 
       {shown.length > 0 && (

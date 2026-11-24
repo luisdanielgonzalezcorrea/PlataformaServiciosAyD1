@@ -1,3 +1,4 @@
+import { useToast } from "./Toast";
 import { useEffect, useState } from "react";
 import { blockDates, listBlockedDates, listProviderReservations, unblockDate } from "../api/providerService";
 import DateRangeCalendar from "./DateRangeCalendar";
@@ -31,9 +32,10 @@ export default function BlockDatesCard({ service, company }) {
   useEffect(() => { setRange({ from: null, to: null }); setResult(null); setConflicts(null); setBlocks([]); loadBlocks(); }, [scopeKey]);
   const marked = blocks.map((b) => b.blockDate);
 
+  const toast = useToast();
   async function remove(b) {
     setRemoving(b.id); setError(null);
-    try { await unblockDate(b.id, b.serviceId || service.id); await loadBlocks(); }
+    try { await unblockDate(b.id, b.serviceId || service.id); await loadBlocks(); toast.success("Quitamos el bloqueo: esa fecha vuelve a estar disponible."); }
     catch (err) { setError(err.friendlyMessage || "No pudimos quitar el bloqueo."); }
     finally { setRemoving(null); }
   }

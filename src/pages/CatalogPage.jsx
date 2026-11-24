@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getServices, getComunas } from "../api/catalogService";
+import { getServices, getComunas, getCategories } from "../api/catalogService";
+import { SkeletonCards } from "../components/Skeleton";
+import EmptyState from "../components/EmptyState";
 import { ClockIcon } from "../components/Icons";
 
 /* Mini calendario decorativo del banner: mes actual, hoy resaltado y
@@ -35,6 +37,7 @@ function HeroCalendar() {
 export default function CatalogPage() {
   const [services, setServices] = useState([]);
   const [comunas, setComunas] = useState([]);
+  const [categories, setCategories] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -44,6 +47,7 @@ export default function CatalogPage() {
 
   useEffect(() => {
     fetchCatalog();
+    getCategories().then((r) => setCategories(Object.fromEntries((r.data || []).map((c) => [c.code, c.label])))).catch(() => {});
   }, []);
 
   const fetchCatalog = async (filters = {}) => {
@@ -63,6 +67,12 @@ export default function CatalogPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearFilters = () => {
+    setSelectedComuna("");
+    setSelectedModality("");
+    fetchCatalog();
   };
 
   const handleFilterChange = (comunaId, modality) => {
@@ -118,13 +128,13 @@ export default function CatalogPage() {
         </label>
       </div>
 
-      {loading && <p className="state muted">Cargando catálogo…</p>}
+      {loading && <SkeletonCards n={6} />}
       {error && <div className="alert alert--error">{error}</div>}
 
       {!loading && !error && (
         <>
           {services.length === 0 ? (
-            <p className="state muted">No hay servicios disponibles con los filtros seleccionados.</p>
+            <EmptyState icon="search" title="No hay servicios con esos filtros" action={<button type="button" className="btn btn--primary" onClick={clearFilters}>Quitar filtros</button>}>Prueba con otra comuna o modalidad.</EmptyState>
           ) : (
             <div className="svc-grid">
               {services.map((service) => (
@@ -142,6 +152,12 @@ export default function CatalogPage() {
                   <p className="svc-card__by">
                     Ofrecido por <strong>{service.companyName}</strong>
                   </p>
+                  {(service.category || service.comunaName) && (
+                    <ul className="chips" aria-label="Categoría y ubicación">
+                      {service.category && <li className="chip">{categories[service.category] || (() => { const t = service.category.replaceAll("_", " ").toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); })()}</li>}
+                      {service.comunaName && <li className="chip chip--place">{service.comunaName}</li>}
+                    </ul>
+                  )}
 
                   {service.description && <p className="svc-card__desc">{service.description}</p>}
 

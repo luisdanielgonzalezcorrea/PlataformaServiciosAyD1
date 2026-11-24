@@ -1,3 +1,4 @@
+import { useToast } from "../components/Toast";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getMyCompany, updateCompany, validateLogoFile } from "../api/companyService";
@@ -13,7 +14,7 @@ export default function EditCompanyPage() {
   const [form, setForm] = useState({ name: "", description: "", address: "", social_media: "", logo: null });
   const [errors, setErrors] = useState({});
   const [loadError, setLoadError] = useState(null);
-  const [ok, setOk] = useState(false);
+  const toast = useToast();
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -26,7 +27,7 @@ export default function EditCompanyPage() {
       .catch((err) => setLoadError(err.friendlyMessage || "No pudimos cargar tu negocio."));
   }, []);
 
-  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined })); setOk(false); };
+  const set = (k, v) => { setForm((f) => ({ ...f, [k]: v })); setErrors((e) => ({ ...e, [k]: undefined })) };
 
   async function submit(e) {
     e.preventDefault();
@@ -43,7 +44,7 @@ export default function EditCompanyPage() {
     try {
       const { data } = await updateCompany(company.id, form);
       setCompany((c) => ({ ...c, ...data }));
-      setOk(true);
+      toast.success("Guardamos los datos de tu negocio.");
     } catch (err) {
       setError(err.friendlyMessage || "No se pudieron guardar los cambios.");
     } finally {
@@ -60,7 +61,6 @@ export default function EditCompanyPage() {
       <form className="card form-card" onSubmit={submit} noValidate>
         <h1>Editar negocio</h1>
         {error && <div className="alert alert--error">{error}</div>}
-        {ok && <div className="alert alert--success">Guardamos los datos de tu negocio.</div>}
         <div className="form-grid">
           <label className="field"><span>NIT</span><input value={company.nit || ""} readOnly /><small>El NIT no se puede cambiar desde aquí.</small></label>
           <label className="field"><span>Nombre del negocio</span>

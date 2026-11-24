@@ -1,3 +1,4 @@
+import { SkeletonList } from "./Skeleton";
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { cancelReservation, listActiveReservations, reservationCode } from "../api/reservationService";
@@ -72,7 +73,7 @@ export default function ActiveReservations({ documentNumber, onSessionExpired, c
       </div>
 
       {notice && <div className={`alert alert--${notice.type === "error" ? "error" : "success"}`}>{notice.text}</div>}
-      {loading && <p className="muted">Cargando tus reservas…</p>}
+      {loading && <SkeletonList n={2} label="Cargando tus reservas" />}
       {error && (
         <div className="alert alert--error">
           {error} <button type="button" className="link-btn" onClick={load}>Reintentar</button>

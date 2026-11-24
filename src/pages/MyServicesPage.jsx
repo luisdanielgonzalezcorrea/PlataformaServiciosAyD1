@@ -1,3 +1,6 @@
+import { useToast } from "../components/Toast";
+import { SkeletonList } from "../components/Skeleton";
+import EmptyState from "../components/EmptyState";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { deactivateService, listMyServices, setServiceActive } from "../api/providerService";
@@ -15,6 +18,7 @@ export default function MyServicesPage() {
   const [services, setServices] = useState(null);
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const toast = useToast();
   const [status, setStatus] = useState("ALL");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -45,7 +49,7 @@ export default function MyServicesPage() {
     try {
       await setServiceActive(s.id, true);
       setServices((list) => list.map((x) => (x.id === s.id ? { ...x, isActive: true } : x)));
-      setNotice({ type: "success", text: `“${s.name}” quedó activo otra vez.` });
+      toast.success(`“${s.name}” quedó activo otra vez.`);
     } catch (err) {
       setNotice({ type: "error", text: err.friendlyMessage || "No se pudo cambiar el estado." });
     } finally {
@@ -63,7 +67,7 @@ export default function MyServicesPage() {
       const out = await deactivateService(service, plan, company?.id);
       if (out.kind === "now") {
         setServices((list) => list.map((x) => (x.id === service.id ? { ...x, isActive: false } : x)));
-        setNotice({ type: "success", text: `“${service.name}” quedó inactivo: ya no aparece en el catálogo ni se puede reservar.` });
+        toast.success(`“${service.name}” quedó inactivo: ya no aparece en el catálogo ni se puede reservar.`);
       } else if (out.kind === "block") {
         setNotice(out.failed.length
           ? { type: "error", text: `Se programaron ${out.done.length} día(s), pero ${out.failed.length} fallaron: ${out.failed[0].message}` }
@@ -92,13 +96,12 @@ export default function MyServicesPage() {
 
       {notice && <div className={`alert alert--${notice.type === "error" ? "error" : "success"}`}>{notice.text}</div>}
       {error && <div className="alert alert--error">{error} <button type="button" className="link-btn" onClick={load}>Reintentar</button></div>}
-      {services === null && <p className="state muted">Cargando tus servicios…</p>}
+      {services === null && <SkeletonList n={4} label="Cargando tus servicios" />}
 
       {services !== null && services.length === 0 && !error && (
-        <div className="panel center">
-          <p>Todavía no tienes servicios publicados.</p>
-          <Link to="/negocio" className="btn btn--primary">Crear nuevo servicio</Link>
-        </div>
+        <EmptyState icon="box" title="Todavía no tienes servicios publicados" action={<Link to="/negocio" className="btn btn--primary">Crear nuevo servicio</Link>}>
+          Crea el primero y aparecerá en el catálogo para que tus clientes reserven.
+        </EmptyState>
       )}
 
       {services?.length > 0 && (
