@@ -899,3 +899,13 @@ input:focus, select:focus, textarea:focus { border-color: #b98a2f; box-shadow: 0
   .auth-page { padding-top: 116px; }
   .auth-page::before { height: 276px; }
 }
+
+/* ---------- Login: enlaces de apoyo con jerarquía (olvidé contraseña / crear cuenta / código) ---------- */
+.auth-forgot { align-self: flex-end; margin-top: -6px; font-size: 0.9rem; font-weight: 600; color: #5c1a33; text-decoration: none; border-radius: 6px; padding: 2px 0; }
+.auth-forgot:hover { text-decoration: underline; text-underline-offset: 3px; }
+.auth-forgot:focus-visible, .auth-alt__code:focus-visible { outline: 2px solid #8a6420; outline-offset: 3px; }
+.auth-alt { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--linea); text-align: center; }
+.auth-alt__label { font-size: 0.92rem; color: #6a5a60; }
+.auth-alt .btn { justify-content: center; text-align: center; }
+.auth-alt__code { align-self: center; font-size: 0.86rem; color: #6a5a60; text-decoration: none; padding: 2px 4px; border-radius: 6px; }
+.auth-alt__code:hover { color: #5c1a33; text-decoration: underline; text-underline-offset: 3px; }

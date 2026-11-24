@@ -70,19 +70,17 @@ export default function LoginPage() {
             autoComplete="current-password"
           />
         </label>
+        <Link className="auth-forgot" to="/olvide-contrasena">¿Olvidaste tu contraseña?</Link>
 
         <button className="btn btn--primary" type="submit" disabled={submitting}>
           {submitting ? "Ingresando..." : "Iniciar sesión"}
         </button>
 
-        <p className="muted center"><Link to="/olvide-contrasena">¿Olvidó su contraseña?</Link></p>
-
-        <p className="muted center">
-          ¿Aún no tienes cuenta? <Link to="/registro">Regístrate</Link>
-        </p>
-        <p className="muted small center">
-          ¿Te enviaron un código de verificación? <Link to="/verificar-correo">Verifica tu correo</Link>
-        </p>
+        <div className="auth-alt">
+          <span className="auth-alt__label">¿Aún no tienes cuenta?</span>
+          <Link className="btn btn--ghost" to="/registro">Crear cuenta de proveedor</Link>
+          <Link className="auth-alt__code" to="/verificar-correo">Tengo un código de verificación</Link>
+        </div>
       </form>
     </div>
   );
